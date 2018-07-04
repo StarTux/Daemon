@@ -143,7 +143,7 @@ public final class Daemon implements ConnectHandler {
             boolean dirty = false;
             for (UUID member: new ArrayList<>(game.members)) {
                 User user = getUser(member);
-                if (!game.uniqueId.equals(member)) {
+                if (!game.uniqueId.equals(user.currentGame)) {
                     game.members.remove(member);
                     game.spectators.remove(member);
                     dirty = true;
@@ -835,7 +835,9 @@ public final class Daemon implements ConnectHandler {
                     sendMessage(sender.getUuid(), serverName, "&eServers are busy right now. Please try again later.");
                     return;
                 }
-                sendMessage(sender.getUuid(), serverName, "Get ready. Your game will start momentarily.");
+                for (UUID member: game.members) {
+                    sendMessage(member, null, "Get ready. Your game will start momentarily.");
+                }
                 startGame(game, server);
             }
             break;
@@ -1035,7 +1037,7 @@ public final class Daemon implements ConnectHandler {
         if (isSetup) {
             // Current Map info
             if (select != GameInfoMode.MAP) {
-                Object currentMapButton = "Random";
+                Object currentMapButton = button(ChatColor.GRAY, "Random", null, format("Random\n&d&oA random map will be\npicked from the map pool."));
                 WorldInfo currentWorldInfo = null;
                 if (game.mapId != null) {
                     currentWorldInfo = findWorldInfo(game.name, game.mapId);
@@ -1074,11 +1076,17 @@ public final class Daemon implements ConnectHandler {
             }
         }
         if (isSetup && canModify) {
-            sendRawMessage(target, serverName, Arrays.asList("",
-                                                             format("&9> &fReady? "),
-                                                             button(ChatColor.GREEN, "[Go!]", "/game start", "Start the game"),
-                                                             " ",
-                                                             button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game")));
+            if (game.serverId < 0) {
+                sendRawMessage(target, serverName, Arrays.asList("",
+                                                                 format("&9> &fReady? "),
+                                                                 button(ChatColor.GREEN, "[Go!]", "/game start", "Start the game"),
+                                                                 " ",
+                                                                 button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game")));
+            } else {
+                sendRawMessage(target, serverName, Arrays.asList("",
+                                                                 format("&9> &fGame running. "),
+                                                                 button(ChatColor.RED, "[Quit]", "/game quit", "Quit this game")));
+            }
         }
         if (isSetup && !canModify) {
             if (game.members.contains(target)) {
@@ -1147,7 +1155,7 @@ public final class Daemon implements ConnectHandler {
             Map<String, Object> hoverEvent = new HashMap<>();
             map.put("hoverEvent", hoverEvent);
             hoverEvent.put("action", "show_text");
-            hoverEvent.put("value", tooltip);
+            hoverEvent.put("value", ChatColor.translateAlternateColorCodes('&', tooltip));
         }
         return map;
     }
