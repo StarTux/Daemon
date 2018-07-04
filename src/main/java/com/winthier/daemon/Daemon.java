@@ -368,13 +368,10 @@ public final class Daemon implements ConnectHandler {
     // Games
 
     static final class Game {
-        enum Preset {
-            COLORFALL, VERTIGO, VANILLA;
-        }
         private String name, displayName, description, shorthand;
-        private Preset preset;
         private int priority;
         private String setupScript;
+        private int minPlayers = 1;
         // For created games only
         private UUID uniqueId;
         private boolean playersMayJoin = true;
@@ -394,9 +391,9 @@ public final class Daemon implements ConnectHandler {
             this.displayName = copy.displayName;
             this.description = copy.description;
             this.shorthand = copy.shorthand;
-            this.preset = copy.preset;
             this.priority = copy.priority;
             this.setupScript = copy.setupScript;
+            this.minPlayers = copy.minPlayers;
             this.uniqueId = copy.uniqueId;
             this.mapId = copy.mapId;
             this.debug = debug;
@@ -416,15 +413,9 @@ public final class Daemon implements ConnectHandler {
             if (description == null) description = displayName;
             if (map.containsKey("shorthand")) shorthand = (String)map.get("shorthand");
             if (shorthand == null) shorthand = name.substring(0, 2);
-            if (map.containsKey("preset")) {
-                try {
-                    preset = Preset.valueOf(((String)map.get("preset")).toUpperCase());
-                } catch (IllegalArgumentException iae) {
-                    iae.printStackTrace();
-                }
-            }
             if (map.containsKey("priority")) priority = ((Number)map.get("priority")).intValue();
             if (map.containsKey("setup_script")) setupScript = (String)map.get("setup_script");
+            if (map.containsKey("min_players")) minPlayers = ((Number)map.get("min_players")).intValue();
             if (setupScript == null) setupScript = "base-game.setup";
             if (map.containsKey("unique_id")) uniqueId = UUID.fromString((String)map.get("unique_id"));
             if (map.containsKey("map_id")) mapId = (String)map.get("map_id");
@@ -442,9 +433,9 @@ public final class Daemon implements ConnectHandler {
             map.put("display_name", displayName);
             map.put("description", description);
             map.put("shorthand", shorthand);
-            map.put("preset", preset.name());
             map.put("priority", priority);
             map.put("setup_script", setupScript);
+            map.put("min_players", minPlayers);
             if (uniqueId != null) map.put("unique_id", uniqueId.toString());
             map.put("map_id", mapId);
             map.put("debug", debug);
@@ -822,6 +813,10 @@ public final class Daemon implements ConnectHandler {
                 }
                 if (game.serverId >= 0) {
                     sendMessage(sender.getUuid(), serverName, ChatColor.RED, "This game is already running.");
+                    return;
+                }
+                if (game.members.size() < game.minPlayers) {
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "%d players are required to start.", game.minPlayers);
                     return;
                 }
                 Server server = null;
