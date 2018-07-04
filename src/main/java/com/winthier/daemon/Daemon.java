@@ -47,8 +47,7 @@ public final class Daemon implements ConnectHandler {
     private List<Game> games = new ArrayList<>();
     private Random random = new Random(System.currentTimeMillis());
     private Map<UUID, String> playerCache = null;
-    private Map<String, Map<String, Object> > gameWorldCache = new HashMap<>();
-    private long lastGameWorldCacheReset = System.nanoTime();
+    private List<WorldInfo> worldInfos = null;
 
     // Upstart
 
@@ -368,7 +367,6 @@ public final class Daemon implements ConnectHandler {
         private Preset preset;
         private int priority;
         private String setupScript;
-        private List<String> maps;
         // For created games only
         private UUID uniqueId;
         private boolean playersMayJoin = true;
@@ -391,7 +389,6 @@ public final class Daemon implements ConnectHandler {
             this.preset = copy.preset;
             this.priority = copy.priority;
             this.setupScript = copy.setupScript;
-            if (copy.maps != null) this.maps = new ArrayList<>(copy.maps);
             this.uniqueId = copy.uniqueId;
             this.mapId = copy.mapId;
             this.debug = debug;
@@ -404,6 +401,7 @@ public final class Daemon implements ConnectHandler {
 
         @SuppressWarnings("unchecked")
         void load(Map<String, Object> map) {
+            if (map.containsKey("name")) name = (String)map.get("name");
             if (map.containsKey("display_name")) displayName = (String)map.get("display_name");
             if (displayName == null) displayName = name;
             if (map.containsKey("description")) description = (String)map.get("description");
@@ -419,7 +417,7 @@ public final class Daemon implements ConnectHandler {
             }
             if (map.containsKey("priority")) priority = ((Number)map.get("priority")).intValue();
             if (map.containsKey("setup_script")) setupScript = (String)map.get("setup_script");
-            if (map.containsKey("maps")) maps = (List<String>)map.get("maps");
+            if (setupScript == null) setupScript = "base-game.setup";
             if (map.containsKey("unique_id")) uniqueId = UUID.fromString((String)map.get("unique_id"));
             if (map.containsKey("map_id")) mapId = (String)map.get("map_id");
             if (map.containsKey("debug")) debug = map.get("debug") == Boolean.TRUE;
@@ -439,7 +437,6 @@ public final class Daemon implements ConnectHandler {
             map.put("preset", preset.name());
             map.put("priority", priority);
             map.put("setup_script", setupScript);
-            if (maps != null) map.put("maps", new ArrayList<>(maps));
             if (uniqueId != null) map.put("unique_id", uniqueId.toString());
             map.put("map_id", mapId);
             map.put("debug", debug);
@@ -453,6 +450,7 @@ public final class Daemon implements ConnectHandler {
 
     @SuppressWarnings("unchecked")
     void loadGames() {
+        games.clear();
         for (File file: new File("games").listFiles()) {
             String name = file.getName();
             if (!name.endsWith(".game")) continue;
@@ -518,6 +516,104 @@ public final class Daemon implements ConnectHandler {
         }
     }
 
+    // Worlds
+
+    class WorldInfo {
+        String gameName;
+        String mapId;
+        String mapPath;
+        String displayName;
+        List<String> authors;
+        String description;
+
+        Object worldInfoButton(ChatColor color, boolean withCommand) {
+            StringBuilder credits = new StringBuilder();
+            if (!authors.isEmpty()) {
+                credits.append("Made by:").append(ChatColor.GRAY);
+                for (String author: authors) {
+                    credits.append(" ").append(author);
+                }
+                credits.append(ChatColor.RESET);
+            }
+            String cmd;
+            if (withCommand) {
+                cmd = "/game map " + mapId;
+            } else {
+                cmd = null;
+            }
+            // Format the description to a pleasant tooltip width
+            StringBuilder desc = new StringBuilder();
+            desc.append(ChatColor.LIGHT_PURPLE);
+            desc.append(ChatColor.ITALIC);
+            int len = 0;
+            for (String word: this.description.split(" ")) {
+                if (word.isEmpty()) continue;
+                if (len == 0) {
+                    len = word.length();
+                    desc.append(word);
+                } else if (len + 1 + word.length() <= 24) {
+                    len += 1 + word.length();
+                    desc.append(" ").append(word);
+                } else {
+                    len = word.length();
+                    desc.append("\n").append(word);
+                }
+            }
+            return button(color, displayName, cmd, displayName + "\n" + credits + "\n" + desc);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    List<WorldInfo> getWorldInfos() {
+        if (worldInfos == null) {
+            worldInfos = new ArrayList<>();
+            Yaml yaml = new Yaml();
+            try {
+                Map<String, Object> map = (Map<String, Object>)yaml.load(new FileReader("config/worlds.yml"));
+                for (String gameKey: map.keySet()) {
+                    Map<String, Object> gameSection = (Map<String, Object>)map.get(gameKey);
+                    Map<String, Object> mapSection = (Map<String, Object>)gameSection.get("maps");
+                    if (mapSection == null) continue;
+                    for (String mapKey: mapSection.keySet()) {
+                        Map<String, Object> worldSection = (Map<String, Object>)mapSection.get(mapKey);
+                        WorldInfo wi = new WorldInfo();
+                        wi.gameName = gameKey;
+                        wi.mapId = (String)worldSection.get("MapID");
+                        wi.mapPath = (String)worldSection.get("MapPath");
+                        wi.authors = (List<String>)worldSection.get("Authors");
+                        wi.displayName = (String)worldSection.get("DisplayName");
+                        wi.description = (String)worldSection.get("Description");
+                        if (wi.mapId == null) continue;
+                        if (wi.mapPath == null) continue;
+                        if (wi.authors == null) wi.authors = new ArrayList<>();
+                        if (wi.displayName == null) wi.displayName = wi.mapId;
+                        if (wi.description == null) wi.description = "";
+                        worldInfos.add(wi);
+                    }
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+                return worldInfos;
+            }
+        }
+        return worldInfos;
+    }
+
+    WorldInfo findWorldInfo(String gameName, String mapId) {
+        for (WorldInfo wi: getWorldInfos()) {
+            if (wi.gameName.equals(gameName) && wi.mapId.equals(mapId)) return wi;
+        }
+        return null;
+    }
+
+    List<WorldInfo> findGameWorlds(String gameName) {
+        List<WorldInfo> result = new ArrayList<>();
+        for (WorldInfo wi: getWorldInfos()) {
+            if (wi.gameName.equals(gameName)) result.add(wi);
+        }
+        return result;
+    }
+
     // Synchronous Event Responders
 
     void syncMinigamesCommand(OnlinePlayer sender, String serverName, String[] args) {
@@ -541,16 +637,16 @@ public final class Daemon implements ConnectHandler {
         case "invite":
             if (args.length <= 2) {
                 if (user.currentGame == null) {
-                    sendMessage(sender.getUuid(), serverName, "&cCreate a game first.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Create a game first.");
                     return;
                 }
                 Game game = openGames.get(user.currentGame);
                 if (game == null || !sender.getUuid().equals(game.owner)) {
-                    sendMessage(sender.getUuid(), serverName, "&cYou cannot modify this game.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You cannot modify this game.");
                     return;
                 }
                 if (game.serverId >= 0) {
-                    sendMessage(sender.getUuid(), serverName, "&cGame has already started.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game has already started.");
                     return;
                 }
                 if (args.length == 1) {
@@ -565,22 +661,22 @@ public final class Daemon implements ConnectHandler {
                         }
                     }
                     if (invitee == null) {
-                        sendMessage(sender.getUuid(), serverName, "&cPlayer not found: %s", inviteeName);
+                        sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Player not found: %s", inviteeName);
                         return;
                     }
                     User inviteeUser = getUser(invitee);
                     if (inviteeUser.currentGame != null) {
-                        sendMessage(sender.getUuid(), serverName, "&c%s is already in a game.", invitee.getName());
+                        sendMessage(sender.getUuid(), serverName, ChatColor.RED, "%s is already in a game.", invitee.getName());
                         return;
                     }
                     if (game.invitees.contains(invitee.getUuid())) {
-                        sendMessage(sender.getUuid(), serverName, "&c%s is already invited.", invitee.getName());
+                        sendMessage(sender.getUuid(), serverName, ChatColor.RED, "%s is already invited.", invitee.getName());
                         return;
                     }
                     game.invitees.add(invitee.getUuid());
                     saveOpenGames();
                     Map<String, Object> payload = new HashMap<>();
-                    payload.put("target", invitee.getUuid());
+                    payload.put("target", invitee.getUuid().toString());
                     List<Object> chat = new ArrayList<>();
                     chat.add("");
                     chat.add(sender.getName() + " invited you to a game of " + game.displayName + ". ");
@@ -598,20 +694,20 @@ public final class Daemon implements ConnectHandler {
         case "public":
             if (args.length == 1) {
                 if (user.currentGame == null) {
-                    sendMessage(sender.getUuid(), serverName, "&cCreate a game first.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Create a game first.");
                     return;
                 }
                 Game game = openGames.get(user.currentGame);
                 if (game == null || !sender.getUuid().equals(game.owner)) {
-                    sendMessage(sender.getUuid(), serverName, "&cYou cannot modify this game.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You cannot modify this game.");
                     return;
                 }
                 if (game.serverId >= 0) {
-                    sendMessage(sender.getUuid(), serverName, "&cGame has already started.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game has already started.");
                     return;
                 }
                 if (game.publicGame) {
-                    sendMessage(sender.getUuid(), serverName, "&cGame is already public.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game is already public.");
                     return;
                 }
                 game.publicGame = true;
@@ -621,7 +717,7 @@ public final class Daemon implements ConnectHandler {
                     User inviteeUser = getUser(invitee);
                     if (inviteeUser.currentGame != null) continue;
                     Map<String, Object> payload = new HashMap<>();
-                    payload.put("target", invitee.getUuid());
+                    payload.put("target", invitee.getUuid().toString());
                     List<Object> chat = new ArrayList<>();
                     chat.add("");
                     chat.add(sender.getName() + " opened a game of " + game.displayName + ". ");
@@ -634,30 +730,32 @@ public final class Daemon implements ConnectHandler {
             }
             break;
         case "map":
-            if (args.length <= 2) {
+            if (args.length >= 1) {
                 if (user.currentGame == null) {
-                    sendMessage(sender.getUuid(), serverName, "&cCreate a game first.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Create a game first.");
                     return;
                 }
                 Game game = openGames.get(user.currentGame);
-                if (game == null || !sender.getUuid().equals(game.owner) || game.maps == null) {
-                    sendMessage(sender.getUuid(), serverName, "&cYou cannot modify this game.");
+                if (game == null || !sender.getUuid().equals(game.owner)) {
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You cannot modify this game.");
                     return;
                 }
                 if (game.serverId >= 0) {
-                    sendMessage(sender.getUuid(), serverName, "&cGame has already started.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game has already started.");
                     return;
                 }
                 if (args.length == 1) {
                     // /game map
                     sendGameInfo(sender.getUuid(), serverName, game, GameInfoMode.MAP);
                 } else {
-                    String mapArg = args[1];
-                    if (game.maps.contains(mapArg)) {
-                        game.mapId = mapArg;
-                        saveOpenGames();
-                        sendGameInfo(sender.getUuid(), serverName, game);
-                    }
+                    StringBuilder sb = new StringBuilder(args[1]);
+                    for (int i = 2; i < args.length; i += 1) sb.append(" ").append(args[i]);
+                    String mapArg = sb.toString();
+                    WorldInfo worldInfo = findWorldInfo(game.name, mapArg);
+                    if (worldInfo == null) return;
+                    game.mapId = mapArg;
+                    saveOpenGames();
+                    sendGameInfo(sender.getUuid(), serverName, game);
                 }
             }
             break;
@@ -675,7 +773,7 @@ public final class Daemon implements ConnectHandler {
                     if (sender.getUuid().equals(game.owner)) {
                         for (UUID member: game.members) {
                             users.remove(member);
-                            sendMessage(member, null, "&c%s cancelled the game.", sender.getName());
+                            sendMessage(member, null, ChatColor.RED, "%s cancelled the game.", sender.getName());
                         }
                         openGames.remove(game.uniqueId);
                         saveOpenGames();
@@ -699,7 +797,7 @@ public final class Daemon implements ConnectHandler {
         case "start":
             if (args.length == 1) {
                 if (user.currentGame == null) {
-                    sendMessage(sender.getUuid(), serverName, "&cCreate a game first.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Create a game first.");
                     return;
                 }
                 final Game game = openGames.get(user.currentGame);
@@ -707,15 +805,15 @@ public final class Daemon implements ConnectHandler {
                     // Orphaned game? Should never happen.
                     users.remove(sender.getUuid());
                     saveUsers();
-                    sendMessage(sender.getUuid(), serverName, "&cYou are not in a game.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are not in a game.");
                     return;
                 }
                 if (!sender.getUuid().equals(game.owner)) {
-                    sendMessage(sender.getUuid(), serverName, "&cYou are not owner of this game.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are not owner of this game.");
                     return;
                 }
                 if (game.serverId >= 0) {
-                    sendMessage(sender.getUuid(), serverName, "&cThis game is already running.");
+                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "This game is already running.");
                     return;
                 }
                 Server server = null;
@@ -749,7 +847,7 @@ public final class Daemon implements ConnectHandler {
                     targetOpenGame = true;
                 } catch (IllegalArgumentException iae) {
                     for (Game gamei: games) {
-                        if (gamei.name.equals(cmd)) {
+                        if (gamei.name.equals(cmd) || gamei.shorthand.equals(cmd)) {
                             game = gamei;
                             targetGeneralGame = true;
                             break;
@@ -765,7 +863,7 @@ public final class Daemon implements ConnectHandler {
                     case "create":
                         if (targetGeneralGame) {
                             if (user.currentGame != null) {
-                                sendMessage(sender.getUuid(), serverName, "&cYou are already in a game.");
+                                sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are already in a game.");
                                 return;
                             }
                             game = createGame(game);
@@ -782,7 +880,7 @@ public final class Daemon implements ConnectHandler {
                         if (targetOpenGame) {
                             boolean spectate = cmd.startsWith("spec");
                             if (user.currentGame != null) {
-                                sendMessage(sender.getUuid(), serverName, "&cYou are already in a game.");
+                                sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are already in a game.");
                                 return;
                             }
                             if (targetGeneralGame) {
@@ -864,12 +962,13 @@ public final class Daemon implements ConnectHandler {
         }
         sendMessage(target, serverName, "&9>");
         int i = 0;
-        ChatColor[] colors = { ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA, ChatColor.LIGHT_PURPLE };
+        List<ChatColor> colors = Arrays.asList(ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA, ChatColor.LIGHT_PURPLE);
+        Collections.shuffle(colors, random);
         for (Game game: games) {
             i += 1;
             sendRawMessage(target, serverName, Arrays.asList(
                                                              "", format("&9> "),
-                                                             button(colors[random.nextInt(colors.length)], "[" + game.shorthand.toUpperCase() + "]&o " + game.displayName, "/game " + game.name, game.displayName)));
+                                                             button(colors.get(i % colors.size()), "[" + game.shorthand.toUpperCase() + "]&o " + game.displayName, "/game " + game.name, game.displayName)));
         }
         sendMessage(target, serverName, "");
     }
@@ -925,49 +1024,43 @@ public final class Daemon implements ConnectHandler {
             }
             sendRawMessage(target, serverName, inviteJs);
         }
-        if (isSetup && game.maps != null) {
+        if (isSetup) {
             // Current Map info
-            String mapName = null, mapDesc = null;
-            if (game.mapId == null) {
-                mapName = "Random";
-            } else {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> userMap = (Map<String, Object>)getGameWorldConfig(game.mapId).get("user");
-                if (userMap == null || !userMap.containsKey("Name")) {
-                    mapName = game.mapId;
-                } else {
-                    mapName = (String)userMap.get("Name");
+            if (select != GameInfoMode.MAP) {
+                Object currentMapButton = "Random";
+                WorldInfo currentWorldInfo = null;
+                if (game.mapId != null) {
+                    currentWorldInfo = findWorldInfo(game.name, game.mapId);
+                    if (currentWorldInfo == null) {
+                        game.mapId = null; // Saving?
+                    } else {
+                        currentMapButton = currentWorldInfo.worldInfoButton(ChatColor.GRAY, false);
+                    }
                 }
-            }
-            if (canModify && select != GameInfoMode.MAP) {
-                sendRawMessage(target, serverName,
-                               Arrays.asList("",
-                                             format("&9> &fMap &7%s ", mapName),
-                                             button(ChatColor.AQUA, "[Select]", "/game map", "Select a map.")));
+                if (canModify) {
+                    sendRawMessage(target, serverName,
+                                   Arrays.asList("",
+                                                 format("&9> &fMap "),
+                                                 currentMapButton,
+                                                 " ",
+                                                 button(ChatColor.AQUA, "[Select]", "/game map", "Select a map.")));
+                } else {
+                    sendRawMessage(target, serverName,
+                                   Arrays.asList("",
+                                                 format("&9> &fMap "),
+                                                 currentMapButton));
+                }
+                // Map selection
             } else {
-                sendMessage(target, serverName, format("&9> &fMap &7%s", mapName));
-            }
-            // Map selection
-            if (select == GameInfoMode.MAP) {
-                List<Object> mapsJs = new ArrayList();
+                List<Object> mapsJs = new ArrayList<>();
                 mapsJs.add("");
-                mapsJs.add(format("&9>"));
+                mapsJs.add(format("&9> &fSelect a map:"));
                 ChatColor[] colors = { ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA };
                 int i = 0;
-                for (String mapId: game.maps) {
+                for (WorldInfo worldInfo: findGameWorlds(game.name)) {
                     i += 1;
-                    Map<String, Object> userMap = (Map<String, Object>)getGameWorldConfig(mapId).get("user");
-                    mapName = null;
-                    mapDesc = null;
-                    if (userMap != null) {
-                        mapName = (String)userMap.get("Name");
-                        mapDesc = (String)userMap.get("Description");
-                    }
-                    if (mapName == null) mapName = mapId;
-                    if (mapDesc == null) mapDesc = mapName;
-                    String desc = mapName + "\n" + mapDesc;
-                    mapsJs.add(" ");
-                    mapsJs.add(button(colors[i % colors.length], mapName, "/game map " + mapId, desc));
+                    mapsJs.add("  ");
+                    mapsJs.add(worldInfo.worldInfoButton(colors[i % colors.length], true));
                 }
                 sendRawMessage(target, serverName, mapsJs);
             }
@@ -1067,16 +1160,20 @@ public final class Daemon implements ConnectHandler {
     }
 
     void startGame(final Game game, final Server server) {
-        if (game.mapId == null && game.maps != null) {
-            game.mapId = game.maps.get(random.nextInt(game.maps.size()));
-            game.maps = null;
-        }
         server.currentGame = game.uniqueId;
         game.serverId = server.index;
         server.state = Server.State.BOOT;
         saveServers();
         saveOpenGames();
-        final ProcessBuilder pb = new ProcessBuilder("script/" + game.setupScript, "" + server.index, "/home/creative/minecraft/worlds/" + game.mapId);
+        // Running e.g.: ./script/base-game.setup colorfall /home/creative/minecraft/worlds/Colorhunt
+        WorldInfo worldInfo;
+        if (game.mapId != null) {
+            worldInfo = findWorldInfo(game.name, game.mapId);
+        } else {
+            List<WorldInfo> infos = findGameWorlds(game.name);
+            worldInfo = infos.get(random.nextInt(infos.size()));
+        }
+        final ProcessBuilder pb = new ProcessBuilder("script/" + game.setupScript, game.name, "" + server.index, worldInfo.mapPath);
         pb.inheritIO();
         final int serverIndex = server.index;
         Runnable run = () -> {
@@ -1099,10 +1196,6 @@ public final class Daemon implements ConnectHandler {
                     FileWriter fw;
                     fw = new FileWriter("run/game" + server.index + "/game_config.json");
                     JSONValue.writeJSONString(gameConfigMap, fw);
-                    fw.flush();
-                    fw.close();
-                    fw = new FileWriter("run/game" + server.index + "/world_config.json");
-                    JSONValue.writeJSONString(getGameWorldConfig(game.mapId), fw);
                     fw.flush();
                     fw.close();
                 } catch (IOException ioe) {
@@ -1132,7 +1225,7 @@ public final class Daemon implements ConnectHandler {
         final Game game = openGames.get(gameId);
         if (retval != 0) {
             for (UUID member: game.members) {
-                sendMessage(member, null, "&cYour game could not be created. Please contact an administrator, or try again later.");
+                sendMessage(member, null, ChatColor.RED, "Your game could not be created. Please contact an administrator, or try again later.");
                 users.remove(member);
             }
             server.reset();
@@ -1182,12 +1275,12 @@ public final class Daemon implements ConnectHandler {
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
                 if (user.currentGame != null) {
-                    sendMessage(playerId, null, "&cYou are already in a game.");
+                    sendMessage(playerId, null, ChatColor.RED, "You are already in a game.");
                     return;
                 }
                 Game game = openGames.get(gameId);
                 if (game == null) {
-                    sendMessage(playerId, null, "&cGame not found.");
+                    sendMessage(playerId, null, ChatColor.RED, "Game not found.");
                     return;
                 }
                 user.currentGame = gameId;
@@ -1202,12 +1295,12 @@ public final class Daemon implements ConnectHandler {
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
                 if (user.currentGame != null) {
-                    sendMessage(playerId, null, "&cYou are already in a game.");
+                    sendMessage(playerId, null, ChatColor.RED, "You are already in a game.");
                     return;
                 }
                 Game game = openGames.get(gameId);
                 if (game == null) {
-                    sendMessage(playerId, null, "&cGame not found.");
+                    sendMessage(playerId, null, ChatColor.RED, "Game not found.");
                     return;
                 }
                 user.currentGame = gameId;
@@ -1285,6 +1378,9 @@ public final class Daemon implements ConnectHandler {
                 loadGames();
                 System.out.println("Loading open games...");
                 loadOpenGames();
+                System.out.println("Flushing all cached config files...");
+                playerCache = null;
+                worldInfos = null;
                 return;
             }
             break;
@@ -1301,7 +1397,7 @@ public final class Daemon implements ConnectHandler {
             break;
         case "reset":
             if (args.length == 0) {
-                System.out.println("Resetting users and servers...");
+                System.out.println("Resetting all runtime data...");
                 users.clear();
                 for (Server server: servers) {
                     server.reset();
@@ -1310,6 +1406,8 @@ public final class Daemon implements ConnectHandler {
                 saveUsers();
                 saveServers();
                 saveOpenGames();
+                playerCache = null;
+                worldInfos = null;
                 return;
             }
             break;
@@ -1327,6 +1425,15 @@ public final class Daemon implements ConnectHandler {
                 return;
             }
             break;
+        case "worlds":
+            if (args.length == 0) {
+                int i = 0;
+                System.out.println("Worlds:");
+                for (WorldInfo wi: getWorldInfos()) {
+                    i += 1;
+                    System.out.println("#" + i + " game=" + wi.gameName + " id=" + wi.mapId + " path=" + wi.mapPath);
+                }
+            }
         default:
             break;
         }
@@ -1398,28 +1505,5 @@ public final class Daemon implements ConnectHandler {
         String result = getPlayerCache().get(uuid);
         if (result != null) return result;
         return "N/A";
-    }
-
-    @SuppressWarnings("unchecked")
-    Map<String, Object> getGameWorldConfig(String mapId) {
-        long now = System.nanoTime();
-        if ((now - lastGameWorldCacheReset) / 1000000000 > 60) {
-            System.out.println("Clearing game world cache");
-            gameWorldCache.clear();
-            lastGameWorldCacheReset = now;
-        }
-        Map<String, Object> result = gameWorldCache.get(mapId);
-        if (result == null) {
-            Yaml yaml = new Yaml();
-            try {
-                result = (Map<String, Object>)yaml.load(new FileReader("/home/creative/minecraft/worlds/" + mapId + "/config.yml"));
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-                result = null;
-            }
-            if (result == null) result = new HashMap<>();
-            gameWorldCache.put(mapId, result);
-        }
-        return result;
     }
 }
