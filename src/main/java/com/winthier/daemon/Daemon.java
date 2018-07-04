@@ -141,6 +141,14 @@ public final class Daemon implements ConnectHandler {
         }
         for (Game game: new ArrayList<>(openGames.values())) {
             boolean dirty = false;
+            for (UUID member: new ArrayList<>(game.members)) {
+                User user = getUser(member);
+                if (!game.uniqueId.equals(member)) {
+                    game.members.remove(member);
+                    game.spectators.remove(member);
+                    dirty = true;
+                }
+            }
             if (game.members.isEmpty()) {
                 openGames.remove(game.uniqueId);
                 dirty = true;
