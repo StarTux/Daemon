@@ -1030,7 +1030,8 @@ public final class Daemon implements ConnectHandler {
                 playersJs.add(button(ChatColor.BLUE, "[Public]", "/game public", "Invite everyone and allow them to join."));
             }
             if (game.publicGame) {
-                playersJs.add(button(ChatColor.BLUE, "Public Game", null, "Anyone may join this game"));
+                playersJs.add("  ");
+                playersJs.add(button(ChatColor.GRAY, "&o(Public Game)", null, "Anyone may join this game"));
             }
             sendRawMessage(target, serverName, playersJs);
         }
@@ -1119,7 +1120,7 @@ public final class Daemon implements ConnectHandler {
         }
         if (!isSetup) {
             sendRawMessage(target, serverName, Arrays.asList("",
-                                                             format("&9> &fWanna play? "),
+                                                             format("&9> &fWanna play?  "),
                                                              button(ChatColor.GREEN, "[Create]", "/game " + game.name + " create", "Create a game")));
         }
         sendMessage(target, serverName, "");
