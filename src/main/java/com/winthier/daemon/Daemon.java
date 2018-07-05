@@ -49,6 +49,7 @@ public final class Daemon implements ConnectHandler {
     private Map<UUID, String> playerCache = null;
     private List<WorldInfo> worldInfos = null;
     private List<ChatColor> niceColors = Arrays.asList(ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA, ChatColor.LIGHT_PURPLE);
+    boolean dirtyServers, dirtyUsers, dirtyGames;
 
     // Upstart
 
@@ -118,6 +119,12 @@ public final class Daemon implements ConnectHandler {
     }
 
     void mainLoop() {
+        if (dirtyServers) saveServers();
+        if (dirtyUsers) saveUsers();
+        if (dirtyGames) saveOpenGames();
+        dirtyServers = false;
+        dirtyUsers = false;
+        dirtyGames = false;
         for (Server server: servers) {
             if (server.state == Server.State.RUN) {
                 if (!gameSessionExists(server.index)) {
@@ -125,36 +132,34 @@ public final class Daemon implements ConnectHandler {
                         Game game = openGames.get(server.currentGame);
                         if (game != null) {
                             openGames.remove(game.uniqueId);
-                            saveOpenGames();
+                            dirtyGames = true;
                             for (UUID member: game.members) {
                                 User user = users.get(member);
                                 if (user != null && game.uniqueId.equals(user.currentGame)) {
                                     users.remove(member);
                                 }
                             }
-                            saveUsers();
+                            dirtyUsers = true;
                         }
                     }
                     server.reset();
-                    saveServers();
+                    dirtyServers = true;
                 }
             }
         }
         for (Game game: new ArrayList<>(openGames.values())) {
-            boolean dirty = false;
             for (UUID member: new ArrayList<>(game.members)) {
                 User user = getUser(member);
                 if (!game.uniqueId.equals(user.currentGame)) {
                     game.members.remove(member);
                     game.spectators.remove(member);
-                    dirty = true;
+                    dirtyGames = true;
                 }
             }
             if (game.members.isEmpty()) {
                 openGames.remove(game.uniqueId);
-                dirty = true;
+                dirtyGames = true;
             }
-            if (dirty) saveOpenGames();
         }
         Runnable task;
         try {
@@ -173,7 +178,26 @@ public final class Daemon implements ConnectHandler {
     }
 
     @Override // ASYNC
-    public void handleClientConnect(Client client) { }
+    public void handleClientConnect(Client client) {
+        tasks.add(() -> syncHandleClientConnect(client));
+    }
+
+    void syncHandleClientConnect(Client client) {
+        Server server = null;
+        for (Server serveri: servers) {
+            if (client.getName().equals("game" + serveri.index)) {
+                server = serveri;
+                break;
+            }
+        }
+        if (server != null && server.postBootMessages != null) {
+            for (Object message: server.postBootMessages) {
+                connect.send("game" + server.index, "minigames", message);
+            }
+            server.postBootMessages = null;
+            dirtyServers = true;
+        }
+    }
 
     @Override // ASYNC
     public void handleClientDisconnect(Client client) { }
@@ -198,7 +222,7 @@ public final class Daemon implements ConnectHandler {
         if (args.length == 0) return;
         switch (args[0].toLowerCase()) {
         case "game": case "games":
-            tasks.add(() -> syncMinigamesCommand(sender, server, Arrays.copyOfRange(args, 1, args.length)));
+            tasks.add(() -> syncGameCommand(sender, server, Arrays.copyOfRange(args, 1, args.length)));
             break;
         default: break;
         }
@@ -300,6 +324,7 @@ public final class Daemon implements ConnectHandler {
         private final int index;
         private UUID currentGame;
         private State state = State.OFF;
+        private List<Object> postBootMessages;
 
         @SuppressWarnings("unchecked")
         void load(Map<String, Object> map) {
@@ -312,17 +337,20 @@ public final class Daemon implements ConnectHandler {
                 }
             }
             if (state == null) state = State.OFF;
+            if (map.containsKey("post_boot_messages")) postBootMessages = (List<Object>)map.get("post_boot_messages");
         }
 
         void store(Map<String, Object> map) {
             map.put("index", index);
             if (currentGame != null) map.put("current_game", currentGame.toString());
             if (state != null) map.put("state", state.name());
+            if (postBootMessages != null) map.put("post_boot_messages", postBootMessages);
         }
 
         void reset() {
             currentGame = null;
             state = State.OFF;
+            postBootMessages = null;
         }
     }
 
@@ -376,6 +404,7 @@ public final class Daemon implements ConnectHandler {
         // For created games only
         private UUID uniqueId;
         private boolean playersMayJoin = true;
+        private boolean playersMaySpectate = true;
         private int serverId = -1;
         private String mapId;
         private boolean debug;
@@ -397,12 +426,15 @@ public final class Daemon implements ConnectHandler {
             this.minPlayers = copy.minPlayers;
             this.uniqueId = copy.uniqueId;
             this.mapId = copy.mapId;
-            this.debug = debug;
+            this.debug = copy.debug;
             if (copy.members != null) this.members = new ArrayList<>(copy.members);
             if (copy.spectators != null) this.spectators = new ArrayList<>(copy.spectators);
             if (copy.invitees != null) this.invitees = new ArrayList<>(copy.invitees);
             this.owner = copy.owner;
             this.publicGame = copy.publicGame;
+            this.playersMayJoin = copy.playersMayJoin;
+            this.playersMaySpectate = copy.playersMaySpectate;
+            this.serverId = copy.serverId;
         }
 
         @SuppressWarnings("unchecked")
@@ -426,6 +458,9 @@ public final class Daemon implements ConnectHandler {
             if (map.containsKey("invitees")) invitees = ((List<String>)map.get("invitees")).stream().map(UUID::fromString).collect(Collectors.toCollection(ArrayList::new));
             if (map.containsKey("owner")) owner = UUID.fromString((String)map.get("owner"));
             if (map.containsKey("public")) publicGame = map.get("public") == Boolean.TRUE;
+            if (map.containsKey("players_may_join")) playersMayJoin = map.get("players_may_join") != Boolean.FALSE;
+            if (map.containsKey("players_may_spectate")) playersMaySpectate = map.get("players_may_spectate") != Boolean.FALSE;
+            if (map.containsKey("server_id")) serverId = ((Number)map.get("server_id")).intValue();
         }
 
         // Only used in Server serialization
@@ -445,6 +480,9 @@ public final class Daemon implements ConnectHandler {
             if (invitees != null) map.put("invitees", invitees.stream().map(Object::toString).collect(Collectors.toList()));
             if (owner != null) map.put("owner", owner.toString());
             if (publicGame) map.put("public", publicGame);
+            if (!playersMayJoin) map.put("players_may_join", playersMayJoin); // default is true
+            if (!playersMaySpectate) map.put("players_may_spectate", playersMaySpectate); // default is true
+            if (serverId >= 0) map.put("server_id", serverId);
         }
     }
 
@@ -616,7 +654,7 @@ public final class Daemon implements ConnectHandler {
 
     // Synchronous Event Responders
 
-    void syncMinigamesCommand(OnlinePlayer sender, String serverName, String[] args) {
+    void syncGameCommand(OnlinePlayer sender, String serverName, String[] args) {
         User user = getUser(sender);
         if (args.length == 0) {
             if (user.currentGame != null) {
@@ -674,7 +712,7 @@ public final class Daemon implements ConnectHandler {
                         return;
                     }
                     game.invitees.add(invitee.getUuid());
-                    saveOpenGames();
+                    dirtyGames = true;
                     Map<String, Object> payload = new HashMap<>();
                     payload.put("target", invitee.getUuid().toString());
                     List<Object> chat = new ArrayList<>();
@@ -702,30 +740,28 @@ public final class Daemon implements ConnectHandler {
                     sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You cannot modify this game.");
                     return;
                 }
-                if (game.serverId >= 0) {
-                    sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game has already started.");
-                    return;
-                }
                 if (game.publicGame) {
                     sendMessage(sender.getUuid(), serverName, ChatColor.RED, "Game is already public.");
                     return;
                 }
                 game.publicGame = true;
-                saveOpenGames();
+                dirtyGames = true;
                 sendGameInfo(sender.getUuid(), serverName, game);
-                for (OnlinePlayer invitee: connect.getOnlinePlayers()) {
-                    User inviteeUser = getUser(invitee);
-                    if (inviteeUser.currentGame != null) continue;
-                    Map<String, Object> payload = new HashMap<>();
-                    payload.put("target", invitee.getUuid().toString());
-                    List<Object> chat = new ArrayList<>();
-                    chat.add("");
-                    chat.add(sender.getName() + " opened a game of " + game.displayName + ". ");
-                    chat.add(button(ChatColor.GREEN, "[Join]", "/game " + game.uniqueId + " join", "Join this game."));
-                    chat.add(" ");
-                    chat.add(button(ChatColor.YELLOW, "[Info]", "/game " + game.uniqueId + " info", "Read more"));
-                    payload.put("chat", chat);
-                    connect.broadcast("PLAYER_MESSAGE", payload);
+                if (game.serverId < 0) {
+                    for (OnlinePlayer invitee: connect.getOnlinePlayers()) {
+                        User inviteeUser = getUser(invitee);
+                        if (inviteeUser.currentGame != null) continue;
+                        Map<String, Object> payload = new HashMap<>();
+                        payload.put("target", invitee.getUuid().toString());
+                        List<Object> chat = new ArrayList<>();
+                        chat.add("");
+                        chat.add(sender.getName() + " opened a game of " + game.displayName + ". ");
+                        chat.add(button(ChatColor.GREEN, "[Join]", "/game " + game.uniqueId + " join", "Join this game."));
+                        chat.add(" ");
+                        chat.add(button(ChatColor.YELLOW, "[Info]", "/game " + game.uniqueId + " info", "Read more"));
+                        payload.put("chat", chat);
+                        connect.broadcast("PLAYER_MESSAGE", payload);
+                    }
                 }
             }
             break;
@@ -754,7 +790,7 @@ public final class Daemon implements ConnectHandler {
                     WorldInfo worldInfo = findWorldInfo(game.name, mapArg);
                     if (worldInfo == null) return;
                     game.mapId = mapArg;
-                    saveOpenGames();
+                    dirtyGames = true;
                     sendGameInfo(sender.getUuid(), serverName, game);
                 }
             }
@@ -763,12 +799,12 @@ public final class Daemon implements ConnectHandler {
             if (args.length == 1) {
                 if (user.currentGame == null) return;
                 users.remove(sender.getUuid());
-                saveUsers();
+                dirtyUsers = true;
                 Game game = openGames.get(user.currentGame);
                 if (game == null) return;
                 game.members.remove(user);
                 game.spectators.remove(user);
-                saveOpenGames();
+                dirtyGames = true;
                 if (game.serverId < 0) {
                     if (sender.getUuid().equals(game.owner)) {
                         for (UUID member: game.members) {
@@ -776,7 +812,7 @@ public final class Daemon implements ConnectHandler {
                             sendMessage(member, null, ChatColor.RED, "%s cancelled the game.", sender.getName());
                         }
                         openGames.remove(game.uniqueId);
-                        saveOpenGames();
+                        dirtyGames = true;
                     } else {
                         for (UUID member: game.members) {
                             sendMessage(member, null, "%s left the game.", sender.getName());
@@ -804,7 +840,7 @@ public final class Daemon implements ConnectHandler {
                 if (game == null) {
                     // Orphaned game? Should never happen.
                     users.remove(sender.getUuid());
-                    saveUsers();
+                    dirtyUsers = true;
                     sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are not in a game.");
                     return;
                 }
@@ -876,53 +912,67 @@ public final class Daemon implements ConnectHandler {
                             game.owner = sender.getUuid();
                             game.members.add(sender.getUuid());
                             user.currentGame = game.uniqueId;
-                            saveOpenGames();
-                            saveUsers();
+                            dirtyGames = true;
+                            dirtyUsers = true;
                             sendGameInfo(sender.getUuid(), serverName, game);
                         }
                         break;
                     case "join": case "j":
                     case "spec": case "spectate":
-                        if (targetOpenGame) {
-                            boolean spectate = cmd.startsWith("spec");
-                            if (user.currentGame != null) {
-                                sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are already in a game.");
-                                return;
-                            }
-                            if (targetGeneralGame) {
-                                if (spectate) return;
-                                // No open game found.  Create a new game.
-                                game = createGame(game);
-                                game.owner = sender.getUuid();
-                                user.currentGame = game.uniqueId;
-                                saveOpenGames();
-                                sendGameInfo(sender.getUuid(), serverName, game);
-                            } else if (targetOpenGame) {
-                                if (!game.publicGame && !game.invitees.contains(sender.getUuid())) return;
-                                if (!game.playersMayJoin) {
-                                    sendGameInfo(sender.getUuid(), serverName, game);
+                        boolean spectate = args[1].startsWith("spec");
+                        if (user.currentGame != null) {
+                            sendMessage(sender.getUuid(), serverName, ChatColor.RED, "You are already in a game.");
+                            return;
+                        }
+                        if (targetGeneralGame) {
+                            String gameName = game.name;
+                            game = null;
+                            if (spectate) return;
+                            for (Game gamei: openGames.values()) {
+                                if (gamei.name.equals(gameName)
+                                    && (gamei.publicGame || gamei.invitees.contains(sender.getUuid()))
+                                    && ((!spectate && gamei.playersMayJoin) || (spectate && gamei.playersMaySpectate))) {
+                                    game = gamei;
+                                    break;
                                 }
-                                if (game.serverId >= 0) {
-                                    // Game must be running.  Just send its server the
-                                    // message.  Risk getting no response if the
-                                    // server is still booting up.  Player has to
-                                    // retry a few seconds later.
-                                    Map<String, Object> payload = new HashMap<>();
-                                    payload.put("action", spectate ? "player_spectate_game" : "player_join_game");
-                                    payload.put("player", sender.getUuid().toString());
-                                    payload.put("game", game.uniqueId.toString());
-                                    connect.send("game" + game.serverId, "minigames", payload);
+                            }
+                        }
+                        if (game == null) return; // The targetGeneralGame loop may leave game reset to null.
+                        if (!spectate && !game.playersMayJoin) return;
+                        if (spectate && !game.playersMaySpectate) return;
+                        if (!game.publicGame && !game.invitees.contains(sender.getUuid())) return;
+                        if (!game.playersMayJoin) {
+                            sendGameInfo(sender.getUuid(), serverName, game);
+                        }
+                        if (game.serverId >= 0) {
+                            // Game must be running.  Just send its server the
+                            // message.  Risk getting no response if the
+                            // server is still booting up.  Player has to
+                            // retry a few seconds later.
+                            Server server = servers.get(game.serverId);
+                            Map<String, Object> payload = new HashMap<>();
+                            payload.put("action", spectate ? "player_spectate_game" : "player_join_game");
+                            payload.put("player", sender.getUuid().toString());
+                            payload.put("game", game.uniqueId.toString());
+                            if (server.state == Server.State.BOOT) {
+                                if (server.postBootMessages == null) server.postBootMessages = new ArrayList<>();
+                                server.postBootMessages.add(payload);
+                            } else {
+                                connect.send("game" + game.serverId, "minigames", payload);
+                            }
+                        } else {
+                            user.currentGame = game.uniqueId;
+                            game.members.add(sender.getUuid());
+                            if (spectate) game.spectators.add(sender.getUuid());
+                            sendGameInfo(sender.getUuid(), serverName, game);
+                            dirtyUsers = true;
+                            dirtyGames = true;
+                            for (UUID member: game.members) {
+                                if (member.equals(sender.getUuid())) continue;
+                                if (spectate) {
+                                    sendMessage(member, null, "%s will spectate your game.", sender.getName());
                                 } else {
-                                    user.currentGame = game.uniqueId;
-                                    game.members.add(sender.getUuid());
-                                    if (spectate) game.spectators.add(sender.getUuid());
-                                    sendGameInfo(sender.getUuid(), serverName, game);
-                                    saveUsers();
-                                    saveOpenGames();
-                                    for (UUID member: game.members) {
-                                        if (member.equals(sender.getUuid())) continue;
-                                        sendMessage(member, null, "%s has joined your game.", sender.getName());
-                                    }
+                                    sendMessage(member, null, "%s has joined your game.", sender.getName());
                                 }
                             }
                         }
@@ -1006,8 +1056,10 @@ public final class Daemon implements ConnectHandler {
         }
         sendMessage(target, serverName, ChatColor.GRAY, "&9> &7%s", game.description);
         boolean canModify = isSetup && target.equals(game.owner);
+        boolean isMember = isSetup && game.members.contains(target);
+        boolean isInvited = isSetup && (game.publicGame || game.invitees.contains(target));
         sendMessage(target, serverName, ChatColor.BLUE, ">");
-        if (game.members != null) {
+        if (isSetup) {
             List<Object> playersJs = new ArrayList<>();
             playersJs.add(format("&9> &fPlayers  "));
             boolean comma = false;
@@ -1021,9 +1073,13 @@ public final class Daemon implements ConnectHandler {
                     comma = true;
                 }
                 String userName = getUserName(uuid);
-                playersJs.add(button(niceColors.get(i % niceColors.size()), getUserName(uuid), null, userName + " has joined this game."));
+                if (game.spectators.contains(uuid)) {
+                    playersJs.add(button(ChatColor.DARK_GRAY, "&o" + getUserName(uuid), null, userName + " has joined this game."));
+                } else {
+                    playersJs.add(button(niceColors.get(i % niceColors.size()), getUserName(uuid), null, userName + " has joined this game."));
+                }
             }
-            if (!game.publicGame && canModify) {
+            if (!game.publicGame && canModify && game.playersMayJoin) {
                 playersJs.add("  ");
                 playersJs.add(button(ChatColor.GREEN, "[Invite]", "/game invite", "Invite a player to your game."));
                 playersJs.add("  ");
@@ -1094,34 +1150,49 @@ public final class Daemon implements ConnectHandler {
             }
         }
         sendMessage(target, serverName, ChatColor.BLUE, ">");
-        if (isSetup && canModify) {
-            if (game.serverId < 0) {
-                sendRawMessage(target, serverName, Arrays.asList("",
-                                                                 format("&9> &fReady?  "),
-                                                                 button(ChatColor.GREEN, "[Go!]", "/game start", "Start the game"),
-                                                                 "  ",
-                                                                 button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game")));
-            } else {
-                sendRawMessage(target, serverName, Arrays.asList("",
-                                                                 format("&9> &fGame running. "),
-                                                                 button(ChatColor.RED, "[Quit]", "/game quit", "Quit this game")));
-            }
-        }
-        if (isSetup && !canModify) {
-            if (game.members.contains(target)) {
+        // Action buttons. Go, Cancel, Join, Quit, Spectate
+        if (isSetup) {
+            if (canModify) {
+                // Owner stuff
+                if (game.serverId < 0) {
+                    sendRawMessage(target, serverName, Arrays.asList("",
+                                                                     format("&9> &fReady?  "),
+                                                                     button(ChatColor.GREEN, "[Go!]", "/game start", "Start the game"),
+                                                                     "  ",
+                                                                     button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game")));
+                } else {
+                    sendRawMessage(target, serverName, Arrays.asList("",
+                                                                     format("&9> &fGame running. "),
+                                                                     button(ChatColor.RED, "[Quit]", "/game quit", "Quit this game")));
+                }
+            } else if (isMember) {
+                // Member stuff
                 sendRawMessage(target, serverName, Arrays.asList("",
                                                                  format("&9> &fChanged your mind?  "),
                                                                  button(ChatColor.RED, "[Quit]", "/game quit", "Leave this game")));
             } else {
-                sendRawMessage(target, serverName, Arrays.asList("",
-                                                                 format("&9> &fJoin us?  "),
-                                                                 button(ChatColor.GREEN, "[Join]", "/game " + game.uniqueId + " join", "Join this game")));
+                // Outsider stuff
+                List<Object> joinJs = new ArrayList<>();
+                joinJs.add("");
+                if (isInvited && (game.playersMayJoin || game.playersMaySpectate)) {
+                    joinJs.add(format("&9> &fJoin us?  "));
+                } else {
+                    joinJs.add(format("&9> &fThis game is closed"));
+                }
+                if (isInvited && game.playersMayJoin) {
+                    joinJs.add(button(ChatColor.GREEN, "[Join]", "/game " + game.uniqueId + " join", "Join this game"));
+                }
+                if (isInvited && game.playersMaySpectate) {
+                    joinJs.add("  ");
+                    joinJs.add(button(ChatColor.AQUA, "[Spec]", "/game " + game.uniqueId + " spec", "Spectate this game"));
+                }
+                sendRawMessage(target, serverName, joinJs);
             }
-        }
-        if (!isSetup) {
+        } else {
             sendRawMessage(target, serverName, Arrays.asList("",
                                                              format("&9> &fWanna play?  "),
                                                              button(ChatColor.GREEN, "[Create]", "/game " + game.name + " create", "Create a game")));
+            // Create game
         }
         sendMessage(target, serverName, "");
     }
@@ -1198,8 +1269,8 @@ public final class Daemon implements ConnectHandler {
         server.currentGame = game.uniqueId;
         game.serverId = server.index;
         server.state = Server.State.BOOT;
-        saveServers();
-        saveOpenGames();
+        dirtyServers = true;
+        dirtyGames = true;
         // Running e.g.: ./script/base-game.setup colorfall /home/creative/minecraft/worlds/Colorhunt
         WorldInfo worldInfo;
         if (game.mapId != null) {
@@ -1207,6 +1278,7 @@ public final class Daemon implements ConnectHandler {
         } else {
             List<WorldInfo> infos = findGameWorlds(game.name);
             worldInfo = infos.get(random.nextInt(infos.size()));
+            game.mapId = worldInfo.mapId;
         }
         final ProcessBuilder pb = new ProcessBuilder("script/" + game.setupScript, game.name, "" + server.index, worldInfo.mapPath);
         pb.inheritIO();
@@ -1268,13 +1340,17 @@ public final class Daemon implements ConnectHandler {
             server.state = Server.State.RUN;
             for (UUID member: game.members) {
                 sendMessage(member, null, "Your game is ready.");
-                Map<String, String> map = new HashMap<>();
-                map.put("player", member.toString());
-                map.put("server", "game" + server.index);
-                connect.broadcast("SEND_PLAYER_SERVER", map);
+                sendPlayerToServer(member, "game" + server.index);
             }
         }
-        saveServers();
+        dirtyServers = true;
+    }
+
+    void sendPlayerToServer(UUID playerId, String serverName) {
+        Map<String, String> map = new HashMap<>();
+        map.put("player", playerId.toString());
+        map.put("server", serverName);
+        connect.broadcast("SEND_PLAYER_SERVER", map);
     }
 
     // Messages sent by a running game (server) to the daemon.
@@ -1293,7 +1369,7 @@ public final class Daemon implements ConnectHandler {
                 User user = users.get(player);
                 if (user == null || user.currentGame == null || !user.currentGame.equals(gameId)) return;
                 users.remove(player);
-                saveUsers();
+                dirtyUsers = true;
                 Game game = openGames.get(gameId);
                 if (game == null) return;
                 game.members.remove(player);
@@ -1305,7 +1381,7 @@ public final class Daemon implements ConnectHandler {
             // already game.  The plugin on the server running said
             // game did the necessary internal checks and then sent
             // this message to the Daemon.
-            if (map.containsKey("player") && map.containsKey("game") && map.containsKey("from")) {
+            if (map.containsKey("player") && map.containsKey("game")) {
                 UUID playerId = UUID.fromString((String)map.get("player"));
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
@@ -1320,12 +1396,15 @@ public final class Daemon implements ConnectHandler {
                 }
                 user.currentGame = gameId;
                 game.members.add(playerId);
-                saveUsers();
-                saveOpenGames();
+                dirtyUsers = true;
+                dirtyGames = true;
+                if (game.serverId >= 0) { // Should always be true in this situation.
+                    sendPlayerToServer(playerId, "game" + game.serverId);
+                }
             }
             break;
         case "game_add_spectator":
-            if (map.containsKey("player") && map.containsKey("game") && map.containsKey("from")) {
+            if (map.containsKey("player") && map.containsKey("game")) {
                 UUID playerId = UUID.fromString((String)map.get("player"));
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
@@ -1341,8 +1420,37 @@ public final class Daemon implements ConnectHandler {
                 user.currentGame = gameId;
                 game.members.add(playerId);
                 game.spectators.add(playerId);
-                saveUsers();
-                saveOpenGames();
+                dirtyUsers = true;
+                dirtyGames = true;
+                if (game.serverId >= 0) { // Should always be true in this situation.
+                    sendPlayerToServer(playerId, "game" + game.serverId);
+                }
+            }
+            break;
+        case "game_end":
+            if (map.containsKey("game")) {
+                UUID gameId = UUID.fromString((String)map.get("game"));
+                if (gameId == null) return;
+                Game game = openGames.get(gameId);
+                if (game == null) return;
+                for (UUID memberId: game.members) {
+                    users.remove(memberId);
+                    dirtyUsers = true;
+                }
+                openGames.remove(gameId);
+                dirtyGames = true;
+            }
+            break;
+        case "game_config":
+            if (map.containsKey("game") && map.containsKey("key") && map.containsKey("value")) {
+                UUID gameId = UUID.fromString((String)map.get("game"));
+                if (gameId == null) return;
+                Game game = openGames.get(gameId);
+                if (game == null) return;
+                Map<String, Object> config = new HashMap<>();
+                config.put((String)map.get("key"), map.get("value"));
+                game.load(config);
+                dirtyGames = true;
             }
             break;
         default:
@@ -1397,9 +1505,9 @@ public final class Daemon implements ConnectHandler {
         case "save":
             if (args.length == 0) {
                 System.out.println("Saving servers...");
-                saveServers();
+                dirtyServers = true;
                 System.out.println("Saving users...");
-                saveUsers();
+                dirtyUsers = true;
                 return;
             }
             break;
@@ -1438,9 +1546,9 @@ public final class Daemon implements ConnectHandler {
                     server.reset();
                 }
                 openGames.clear();
-                saveUsers();
-                saveServers();
-                saveOpenGames();
+                dirtyUsers = true;
+                dirtyServers = true;
+                dirtyGames = true;
                 playerCache = null;
                 worldInfos = null;
                 return;
