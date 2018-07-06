@@ -1,0 +1,13 @@
+pvp:
+  oneinthequiver:
+    ModeID: "One in the Quiver"
+    DisplayName: "One in the Quiver"
+    Description: "Arrow hits cause insta death. Every player starts with one arrow and gets one extra for a kill."
+  chickenhunt:
+    ModeID: "Chicken Hunt"
+    DisplayName: "Chicken Hunt"
+    Description: "Hunt the loose chicken for bonus points."
+  snowballfight:
+    ModeID: "Snowball Fight"
+    DisplayName: "Snowball Fight"
+    Description: "Freeze your opponents with snowballs."

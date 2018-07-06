@@ -1,0 +1,16 @@
+#!/bin/bash
+# Usage:
+# game.exists GAME_ID
+
+
+GAME_ID=$1
+GAME_NAME=game$GAME_ID
+screen -ls $GAME_NAME &> /dev/null
+ret=$?
+if [ $ret = 0 ]; then
+  echo $GAME_NAME exists
+  exit 0
+else
+  echo $GAME_NAME does not exist
+  exit 1
+fi

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Usage:
+# screen.stop $GAME_ID
+
+GAME_ID=$1
+GAME_NAME=game$GAME_ID
+
+# ^M means ENTER
+screen -S $GAME_NAME -p 0 -X stuff "^Mstop^M"

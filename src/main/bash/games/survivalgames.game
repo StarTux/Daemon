@@ -1,0 +1,9 @@
+{
+"display_name": "Survival Games",
+"shorthand": "sg",
+"description": "Find gear in chests and try to be the last one alive.",
+"min_players": 2,
+"priority": 50,
+"connect": true,
+"setup_script": "base-game.setup"
+}

@@ -1,0 +1,32 @@
+#!/bin/bash
+# Usage:
+# Run from daemon dir
+# game.start $SERVER_ID $SERVER_PORT
+
+SERVER_ID=$1
+SERVER_PORT=$2
+echo game.start $SERVER_ID $SERVER_PORT
+
+SERVER_NAME=game$SERVER_ID
+LINKDIR=run/$SERVER_NAME
+GAMEDIR=`readlink $LINKDIR`
+
+find $GAMEDIR -type f -name '*.yml' | xargs sed -i "s/%SERVER_NAME%/$SERVER_NAME/g"
+sed -i "s/%SERVER_PORT%/$SERVER_PORT/g" $GAMEDIR/server.properties
+
+screen -d -m -S $SERVER_NAME script/game.run $SERVER_ID
+
+# Wait until the Done! token shows up in the server log, hinting
+# that the server is up and running. Give up after 60 seconds.
+success=1
+for i in {1..20}; do
+  sleep 1
+  #echo Scanning logs for Done token: $i
+  grep ' Done ' $GAMEDIR/logs/latest.log
+  success=$?
+  [ $success = 0 ] && break
+done
+
+echo game.start EXIT $sucess
+
+exit $success

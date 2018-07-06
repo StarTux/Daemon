@@ -1,0 +1,9 @@
+{
+"display_name": "Colorfall",
+"shorthand": "cf",
+"description": "Run to the safety of the colored blocks before time runs out and the floor under your feet disappears.",
+"min_players": 2,
+"priority": 10,
+"connect": true,
+"setup_script": "base-game.setup"
+}

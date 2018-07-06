@@ -1,0 +1,9 @@
+{
+"display_name": "Vertigo",
+"shorthand": "vt",
+"description": "Jump and land in the water to create a block and earn points. Bonus points if you land next to an existing player block.",
+"min_players": 1,
+"priority": 20,
+"connect": true,
+"setup_script": "base-game.setup"
+}

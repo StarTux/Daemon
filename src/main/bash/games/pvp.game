@@ -1,0 +1,10 @@
+{
+"display_name": "PvP",
+"shorthand": "pvp",
+"description": "A collection of game modes where you fight your friends to the death on a variety of maps.",
+"min_players": 1,
+"priority": 60,
+"connect": true,
+"play_modes": true,
+"setup_script": "base-game.setup"
+}

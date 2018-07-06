@@ -1,0 +1,517 @@
+adventure:
+    christmas:
+      MapID: Christmas
+      MapPath: /home/creative/minecraft/worlds/Christmas
+      DisplayName: Christmas
+      Authors: [ feydk, killergames1, StarTux ]
+      Permission: adventure.adventure
+      Category: Holidays
+    #questpurex:
+      #MapID: Questpurex
+      #MapPath: /home/creative/minecraft/worlds/Questpurex
+      #DisplayName: The Silent King
+      #Authors: [ _Spiritus ]
+      #Permission: adventure.adventure
+    overrunmuseum:
+      MapID: Overrun Museum
+      MapPath: /home/creative/minecraft/worlds/OverrunMuseum
+      DisplayName: Overrun Museum
+      Authors: [ CheeseDoctor ]
+      Permission: adventure.adventure
+      Category: Overrun
+    overrunsuburbs:
+      MapID: Overrun Suburbs
+      MapPath: /home/creative/minecraft/worlds/OverrunSuburbs
+      DisplayName: Overrun Suburbs
+      Authors: [ CheeseDoctor ]
+      Permission: adventure.adventure
+      Category: Overrun
+    sunsetfarms:
+      MapID: Sunset Farms
+      MapPath: /home/creative/minecraft/worlds/Pumpkin
+      DisplayName: Sunset Farms
+      Authors: [ Black0ut1 ]
+      Permission: adventure.adventure
+      Category: Halloween
+    mystichallow:
+      MapID: Mystic Hallow
+      MapPath: /home/creative/minecraft/worlds/Pumpkin2
+      DisplayName: Mystic Hallow
+      Authors: [ Black0ut1 ]
+      Permission: adventure.adventure
+      Category: Halloween
+    beamieexperience:
+      MapID: Beamie Experience
+      MapPath: /home/creative/minecraft/worlds/ShoomaExperience
+      DisplayName: Beamie Experience
+      Authors: [ MrShooma ]
+      Permission: adventure.adventure
+      Category: Story
+    tnbc:
+      MapID: The Nightmare Before Christmas
+      MapPath: /home/creative/minecraft/worlds/AdventureTNBC
+      DisplayName: The Nightmare Before Christmas
+      Authors: [ killergames1 ]
+      Permission: adventure.adventure
+      Category: Halloween
+    ambiguity:
+      MapID: Ambiguity
+      MapPath: /home/creative/minecraft/worlds/ADVAmbiguity
+      DisplayName: Ambiguity
+      Authors: [ _Spiritus ]
+      SoloOnly: true
+      Permission: adventure.adventure
+      Category: Story
+    overload:
+      MapID: Overload
+      MapPath: /home/creative/minecraft/worlds/space213_the_end
+      DisplayName: Overload
+      Authors: [ papamaci, MenoMano ]
+      SoloOnly: false
+      Permission: adventure.adventure
+      Category: Story
+    spacemission:
+      MapID: Space Mission
+      MapPath: /home/creative/minecraft/worlds/PancakePawner
+      DisplayName: Space Mission
+      Authors: [ PancakePawner ]
+      SoloOnly: false
+      Permission: adventure.adventure
+      Category: Story
+    parkour:
+      MapID: Parkour
+      MapPath: /home/creative/minecraft/worlds/parkour_234
+      DisplayName: Parkour
+      Authors: [ MenoMano ]
+      SoloOnly: false
+      Permission: adventure.adventure
+      Category: Parkour
+    hardcoreparkour:
+      MapID: Hardcore Parkour
+      MapPath: /home/creative/minecraft/worlds/custardadv
+      DisplayName: Hardcore Parkour
+      Authors: [ custard0nky ]
+      SoloOnly: false
+      Permission: adventure.adventure
+      Category: Parkour
+    easteregghunt:
+      MapID: Easter Egg Hunt
+      MapPath: /home/creative/minecraft/worlds/Easter_Egg_Hunt
+      DisplayName: Easter Egg Hunt
+      Authors: [ papamaci, MenoMano ]
+      Permission: adventure.adventure
+      Category: Holidays
+    horrorhouse:
+      MapID: Horror House
+      MapPath: /home/creative/minecraft/worlds/HorrorHouse
+      DisplayName: Horror House
+      Authors: [ papamaci, MenoMano, killergames1 ]
+      Permission: adventure.adventure
+      Category: Halloween
+mobarena:
+    default:
+      MapID: Mob Arena
+      Authors: [ Simrayz, ShanesyPwns ]
+      MapPath: MobArena/Simrayz_ShanesyPwns
+    halloween:
+      MapID: Halloween
+      Authors: [ killergames1 ]
+      MapPath: MobArena/Halloween
+survivalgames:
+    default:
+      MapID: Koontzy Games
+      Authors: [ Samein, Koontzykinz, killergames1, NichH_, feydk ]
+      MapPath: /home/creative/minecraft/worlds/HungerGames
+    hellgames:
+      MapID: Hell Games
+      Authors: [ killergames1, Black0ut1, Ten_Of_Aces ]
+      MapPath: /home/creative/minecraft/worlds/HellGames_nether
+    snow:
+      MapID: Snow
+      Authors: [ killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/Snow
+    medieval:
+      MapID: Medieval
+      Authors: [ KingKasper, Sovereign_Werner, Quest_Master ]
+      MapPath: /home/creative/minecraft/worlds/TNT
+    bobstown:
+      MapID: BobsTown
+      Authors: [ brian2565 ]
+      MapPath: /home/creative/minecraft/worlds/BobsTown
+    themountainpigg:
+      MapID: TheMountainPigg
+      Authors: [ TheMountainPigg ]
+      MapPath: /home/creative/minecraft/worlds/TheMountainPigg
+spleef:
+    default:
+      MapID: Koontzy Spleef
+      Authors: [ Koontzykinz ]
+      MapPath: /home/creative/minecraft/worlds/KoontzySpleef
+    rainbow:
+      MapID: Rainbow Spleef
+      Authors: [ Emily_Stow ]
+      MapPath: /home/creative/minecraft/worlds/RainbowSpleef
+    candyland:
+      MapID: Candyland
+      Authors: [ Dupp ]
+      MapPath: /home/creative/minecraft/worlds/DuppSpleef
+    cubefalling:
+      MapID: Falling River
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/CubeFalling
+    skyland:
+      MapID: Monster Desert
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/Skyland
+    cursedrealm:
+      MapID: Cursed Realm
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/CursedRealm_nether
+    bootyspleef:
+      MapID: Treasure Island
+      Authors: [ LanceDH ]
+      MapPath: /home/creative/minecraft/worlds/LanceSpleef
+    spleefoween:
+      MapID: Spleefoween
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/Spleefoween
+    frozenpond:
+      MapID: Frozen Pond
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/FrozenPond
+    tiramisu:
+      MapID: Tiramisu
+      Authors: [ Katantunoro, _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/Tiramisu
+    mortalitycheck:
+      MapID: Mortality Check
+      Authors: [ Njord ]
+      MapPath: /home/creative/minecraft/worlds/Mortality-Check
+    valentine:
+      MapID: Valentine
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/Valentine
+colorfall:
+    default:
+      MapID: Colorfall
+      Authors: [ feydk ]
+      MapPath: /home/creative/minecraft/worlds/Colorhunt
+      Description: The original Colorfall map made by the creator himself.
+    shooma:
+      MapID: Shooma Experience
+      Authors: [ MrShooma ]
+      MapPath: /home/creative/minecraft/worlds/MrShooma
+    freebird:
+      MapID: Free Bird
+      Authors: [ _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/FreeBird
+    lotus:
+      MapID: Lotus
+      Authors: [ MenoMano ]
+      MapPath: /home/creative/minecraft/worlds/Lotus_the_end
+    orbit:
+      MapID: Orbit
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/Orbit
+    rainbowroad:
+      MapID: Rainbow Road
+      Authors: [ KingTommo ]
+      MapPath: /home/creative/minecraft/worlds/KingTommo
+    nyanrun:
+      MapID: Nyan Run
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/NyanRun_the_end
+    treeslife:
+      MapID: The Lab
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/TreesLife
+    underthesea:
+      MapID: Under the Sea
+      Authors: [ KarateGirl77777 ]
+      MapPath: /home/creative/minecraft/worlds/KarateGirl
+    carrotfall:
+      MapID: Carrotfall
+      Authors: [ dms06dotte ]
+      MapPath: /home/creative/minecraft/worlds/Carrotfall
+    titanius:
+      MapID: Titanius
+      Authors: [ feydk ]
+      MapPath: /home/creative/minecraft/worlds/Titanius
+    flowerpower:
+      MapID: Flower Power
+      Authors: [ _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/FlowerPower
+    kalista:
+      MapID: Snowflake
+      Authors: [ KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/kalista
+    flowerfall:
+      MapID: Flowerfall
+      Authors: [ Koontzykinz ]
+      MapPath: /home/creative/minecraft/worlds/KoontzyFall
+    negative:
+      MapID: Negative
+      Authors: [ _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/Negative
+    ananke:
+      MapID: Temple of Ananke
+      Authors: [ KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/Ananke
+    clouds:
+      MapID: Clouds
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/Clouds
+    colorfalloween:
+      MapID: Colorfalloween
+      Authors: [ Black0ut1, killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/Colorfalloween
+    liftoff:
+      MapID: Lift Off
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/LiftOff
+    cfdupp:
+      MapID: CFDupp
+      Authors: [ Dupp ]
+      MapPath: /home/creative/minecraft/worlds/CFDupp
+    flush:
+      MapID: Flush
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/Trip
+    apocalypsenow:
+      MapID: Apocalypse Now
+      Authors: [ KalistaAnanke, JohnnyOo ]
+      MapPath: /home/creative/minecraft/worlds/ACM
+    starfall:
+      MapID: Starfall
+      Authors: [ _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/Starfall
+    monolith:
+      MapID: Monolith
+      Authors: [ Katantunoro ]
+      MapPath: /home/creative/minecraft/worlds/Recession
+    gravity:
+      MapID: Gravity
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/Gravity
+    pretzel:
+      MapID: Pretzel
+      Authors: [ KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/Pretzel
+    cupidsarrow:
+      MapID: Cupid's Arrow
+      Authors: [ KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/akvalentine
+    lightsabers:
+      MapID: Lightsabers
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/lightsabers
+    homesweethome:
+      MapID: Home Sweet Home
+      Authors: [ KarateGirl77777 ]
+      MapPath: /home/creative/minecraft/worlds/HomeSweetHome_the_end
+    honeycomb:
+      MapID: Honeycomb
+      Authors: [ _Spiritus ]
+      MapPath: /home/creative/minecraft/worlds/Honeycomb
+    nomap:
+      MapID: There is no Map
+      Authors: [ AnnieH321 ]
+      MapPath: /home/creative/minecraft/worlds/nomap
+    pizza:
+      MapID: Pizza
+      Authors: [ Edvard ]
+      MapPath: /home/creative/minecraft/worlds/Pizza
+    silo:
+      MapID: Silo
+      Authors: [ Katantunoro ]
+      MapPath: /home/creative/minecraft/worlds/Silo_the_end
+    baconmadness:
+      MapID: Bacon Madness
+      Authors: [ AnnieH321, Edvard ]
+      MapPath: /home/creative/minecraft/worlds/Breakfast
+    timber:
+      MapID: Timber
+      Authors: [ CheeseDoctor ]
+      MapPath: /home/creative/minecraft/worlds/CheeseCF
+    simplycolorfall:
+      MapID: Ice Fall
+      Authors: [ TheCreasedClub, KalimFang, Karategirl77777 ]
+      MapPath: /home/creative/minecraft/worlds/SimplyColorfall
+vertigo:
+    default:
+      MapID: Vertigo
+      Authors: [ feydk ]
+      MapPath: /home/creative/minecraft/worlds/Splash
+    temple:
+      MapID: Temple
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/Slime
+    bonecrusher:
+      MapID: Bone Crusher
+      Authors: [ killergames1]
+      MapPath: /home/creative/minecraft/worlds/BoneCrusher
+    ruins:
+      MapID: Ruins
+      Authors: [ ThatGuyInYourBushes ]
+      MapPath: /home/creative/minecraft/worlds/VertigoRuins
+    #island:
+      #MapID: Island
+      #Authors: [ ThatGuyInYourBushes ]
+      #MapPath: /home/creative/minecraft/worlds/VertigoIsland
+    verticoal:
+      MapID: Verticoal
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/Verticoal
+    scaryforest:
+      MapID: Scary Forest
+      Authors: [ Ten_of_Aces, killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/ScaryForest_the_end
+    lovehurts:
+      MapID: Love Hurts
+      Authors: [ Koontzykinz, AnnieH321, KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/LoveHurts
+    terrace:
+      MapID: Terrace
+      Authors: [ killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/Terrace
+    bridge:
+      MapID: Bridge
+      Authors: [ MenoMano ]
+      MapPath: /home/creative/minecraft/worlds/Bridge
+    desertjump:
+      MapID: Desert Jump
+      Authors: [ KatelynnF ]
+      MapPath: /home/creative/minecraft/worlds/DesertJump
+    plunge:
+      MapID: Plunge
+      Authors: [ Katantunoro ]
+      MapPath: /home/creative/minecraft/worlds/Memories
+    sauna:
+      MapID: Sauna
+      Authors: [ KalistaAnanke ]
+      MapPath: /home/creative/minecraft/worlds/towels
+    firework:
+      MapID: Firework
+      Authors: [ MenoMano ]
+      MapPath: /home/creative/minecraft/worlds/rekktigo
+    jumparound:
+      MapID: Jump around
+      Authors: [ Njord ]
+      MapPath: /home/creative/minecraft/worlds/njvertigo
+    forgotten:
+      MapID: Forgotten
+      Authors: [ Quest_Master, blitz70 ]
+      MapPath: /home/creative/minecraft/worlds/Forgotten
+    coffee:
+      MapID: Coffee
+      Authors: [ AnnieH321 ]
+      MapPath: /home/creative/minecraft/worlds/coffee
+    templefall:
+      MapID: TempleFall
+      Authors: [ TheLoneKing ]
+      MapPath: /home/creative/minecraft/worlds/TempleFall
+    gottacatchthemall:
+      MapID: GottaCatchThemAll
+      Authors: [ KalimFang ]
+      MapPath: /home/creative/minecraft/worlds/GottaCatchThemAll
+    secretgarden:
+      MapID: Secret Garden
+      Authors: [ Oceanical ]
+      MapPath: /home/creative/minecraft/worlds/Oceanical
+    doghouse:
+      MapID: Doghouse
+      Authors: [ Oceanical ]
+      MapPath: /home/creative/minecraft/worlds/Doghouse
+    protigo:
+      MapID: Protigo
+      Authors: [ contagiousduck ]
+      MapPath: /home/creative/minecraft/worlds/DuckVertigo
+    thelost:
+      MapID: TheLost
+      Authors: [ HappySapling ]
+      MapPath: /home/creative/minecraft/worlds/TheLost
+pvp:
+    contagiousduck:
+      MapID: contagiousduck
+      Authors: [ contagiousduck ]
+      MapPath: /home/creative/minecraft/worlds/PVP
+    Stryker64:
+      MapID: Stryker64
+      Authors: [ Stryker64 ]
+      MapPath: /home/creative/minecraft/worlds/PVPStryker64
+    BLOX_ORD:
+      MapID: BLOX_ORD
+      Authors: [ BLOX_ORD ]
+      MapPath: /home/creative/minecraft/worlds/PVPBLOX_ORD
+    #terrabytegaming:
+      #MapID: terrabytegaming
+      #Authors: [ terrabytegaming ]
+      #MapPath: /home/creative/minecraft/worlds/PVPUnknown
+    beastwithinyou:
+      MapID: beastwithinyou
+      Authors: [ beastwithinyou ]
+      MapPath: /home/creative/minecraft/worlds/PVPbeastwithinyou
+    22dude:
+      MapID: 22dude
+      Authors: [ 22dude ]
+      MapPath: /home/creative/minecraft/worlds/PVP22dude
+    Samein:
+      MapID: Samein
+      Authors: [ Samein ]
+      MapPath: /home/creative/minecraft/worlds/PVPSamein
+    #LanceDH:
+      #MapID: LanceDH
+      #Authors: [ LanceDH ]
+      #MapPath: /home/creative/minecraft/worlds/PVPLanceDH
+    #cocacola612:
+      #MapID: cocacola612
+      #Authors: [ cocacola612 ]
+      #MapPath: /home/creative/minecraft/worlds/PVPcocacola612
+    blockfort:
+      MapID: Block Fort
+      Authors: [ killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/OITQArena
+    firevsice:
+      MapID: Fire vs Ice
+      Authors: [ Dupp ]
+      MapPath: /home/creative/minecraft/worlds/FireVsIce
+    snowfall:
+      MapID: Snowfall
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/SnowFall
+    hauntedforest:
+      MapID: Haunted Forest
+      Authors: [ killergames1, Ten_of_Aces ]
+      MapPath: /home/creative/minecraft/worlds/HauntedForest_the_end
+    theexplorers:
+      MapID: The Explorers
+      Authors: [ Edvard, Dupp, Koontzykinz ]
+      MapPath: /home/creative/minecraft/worlds/EdColorfall
+    sewers:
+      MapID: Sewers
+      Authors: [ killergames1 ]
+      MapPath: /home/creative/minecraft/worlds/Sewers
+    sakurashowdown:
+      MapID: Sakura Showdown
+      Authors: [ Black0ut1 ]
+      MapPath: /home/creative/minecraft/worlds/SakuraShowdown
+    sand:
+      MapID: Sand
+      Authors: [ PancakePawner ]
+      MapPath: /home/creative/minecraft/worlds/sand
+    saturdaymorning:
+      MapID: Saturday Morning
+      Authors: [ Njord ]
+      MapPath: /home/creative/minecraft/worlds/SaturdayMorning
+    briantreetop:
+      MapID: BrianTreeTop
+      Authors: [ brian2565 ]
+      MapPath: /home/creative/minecraft/worlds/BrianTreeTop
+    briantreetop:
+      MapID: PHIONIXFOX
+      Authors: [ PHIONIXFOX ]
+      MapPath: /home/creative/minecraft/worlds/PHIONIXFOX
+    candyland:
+      MapID: Candyland
+      Authors: [ PHIONIXFOX ]
+      MapPath: /home/creative/minecraft/worlds/Candyland

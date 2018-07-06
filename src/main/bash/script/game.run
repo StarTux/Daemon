@@ -1,0 +1,15 @@
+#!/bin/bash
+# Usage:
+# game.run $GAME_ID
+# To be executed by game.start inside a screen session
+
+GAME_ID=$1
+GAME_NAME=game$GAME_ID
+LINKDIR=run/$GAME_NAME
+GAMEDIR=`readlink $LINKDIR`
+echo $STY > $GAMEDIR/screen.session
+cd $GAMEDIR
+java -jar server.jar
+cd -
+#rm -rv $GAMEDIR
+exit 0

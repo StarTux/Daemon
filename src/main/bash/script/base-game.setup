@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Usage:
+# executed from the base daemon dir
+# base-game.setup $template $server_id $world_path
+
+TEMPLATE=$1
+SERVER_ID=$2
+WORLD_PATH=$3
+
+echo base-game.setup $TEMPLATE $SERVER_ID $WORLD_PATH
+
+BASEDIR=/tmp/minigames
+mkdir -vp $BASEDIR || exit 1
+MCDIR=`mktemp -d $BASEDIR/$TEMPLATE-$SERVER_ID-XXXXXXXXXXXX` || exit 1
+cp -r template/base/* $MCDIR || exit 1
+cp -nr template/$TEMPLATE/* $MCDIR || exit 1
+cp -r $WORLD_PATH $MCDIR/GameWorld
+
+LINKDIR=run/game$SERVER_ID
+rm -f $LINKDIR
+ln -vfs $MCDIR $LINKDIR
+
+echo base-game.setup EXIT 0
+exit 0

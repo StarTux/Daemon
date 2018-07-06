@@ -1,0 +1,9 @@
+{
+"display_name": "Spleef",
+"shorthand": "sp",
+"description": "Break the blocks under your opponents' feet and make them fall to their death.",
+"min_players": 2,
+"priority": 30,
+"connect": true,
+"setup_script": "base-game.setup"
+}
