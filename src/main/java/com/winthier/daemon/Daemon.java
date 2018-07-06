@@ -48,6 +48,7 @@ public final class Daemon implements ConnectHandler {
     private Random random = new Random(System.currentTimeMillis());
     private Map<UUID, String> playerCache = null;
     private List<WorldInfo> worldInfos = null;
+    private List<PlayMode> playModes = null;
     private List<ChatColor> niceColors = Arrays.asList(ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA, ChatColor.LIGHT_PURPLE);
     boolean dirtyServers, dirtyUsers, dirtyGames;
 
@@ -401,6 +402,7 @@ public final class Daemon implements ConnectHandler {
         private int priority;
         private String setupScript;
         private int minPlayers = 1;
+        private boolean connect = false; // Connect and daemon awareness
         // For created games only
         private UUID uniqueId;
         private boolean playersMayJoin = true;
@@ -413,6 +415,7 @@ public final class Daemon implements ConnectHandler {
         private List<UUID> invitees;
         private UUID owner;
         private boolean publicGame;
+        private String playMode;
 
         Game() { }
 
@@ -424,6 +427,7 @@ public final class Daemon implements ConnectHandler {
             this.priority = copy.priority;
             this.setupScript = copy.setupScript;
             this.minPlayers = copy.minPlayers;
+            this.connect = copy.connect;
             this.uniqueId = copy.uniqueId;
             this.mapId = copy.mapId;
             this.debug = copy.debug;
@@ -435,6 +439,7 @@ public final class Daemon implements ConnectHandler {
             this.playersMayJoin = copy.playersMayJoin;
             this.playersMaySpectate = copy.playersMaySpectate;
             this.serverId = copy.serverId;
+            this.playMode = copy.playMode;
         }
 
         @SuppressWarnings("unchecked")
@@ -449,6 +454,7 @@ public final class Daemon implements ConnectHandler {
             if (map.containsKey("priority")) priority = ((Number)map.get("priority")).intValue();
             if (map.containsKey("setup_script")) setupScript = (String)map.get("setup_script");
             if (map.containsKey("min_players")) minPlayers = ((Number)map.get("min_players")).intValue();
+            if (map.containsKey("connect")) connect = map.get("connect") == Boolean.TRUE;
             if (setupScript == null) setupScript = "base-game.setup";
             if (map.containsKey("unique_id")) uniqueId = UUID.fromString((String)map.get("unique_id"));
             if (map.containsKey("map_id")) mapId = (String)map.get("map_id");
@@ -461,6 +467,7 @@ public final class Daemon implements ConnectHandler {
             if (map.containsKey("players_may_join")) playersMayJoin = map.get("players_may_join") != Boolean.FALSE;
             if (map.containsKey("players_may_spectate")) playersMaySpectate = map.get("players_may_spectate") != Boolean.FALSE;
             if (map.containsKey("server_id")) serverId = ((Number)map.get("server_id")).intValue();
+            if (map.containsKey("play_mode")) playMode = (String)map.get("play_mode");
         }
 
         // Only used in Server serialization
@@ -472,6 +479,7 @@ public final class Daemon implements ConnectHandler {
             map.put("priority", priority);
             map.put("setup_script", setupScript);
             map.put("min_players", minPlayers);
+            if (connect) map.put("connect", connect);
             if (uniqueId != null) map.put("unique_id", uniqueId.toString());
             map.put("map_id", mapId);
             map.put("debug", debug);
@@ -483,6 +491,7 @@ public final class Daemon implements ConnectHandler {
             if (!playersMayJoin) map.put("players_may_join", playersMayJoin); // default is true
             if (!playersMaySpectate) map.put("players_may_spectate", playersMaySpectate); // default is true
             if (serverId >= 0) map.put("server_id", serverId);
+            if (playMode != null) map.put("play_mode", playMode);
         }
     }
 
@@ -650,6 +659,54 @@ public final class Daemon implements ConnectHandler {
         return result;
     }
 
+    // Play Modes
+
+    final class PlayMode {
+        String gameName;
+        String modeId;
+        String displayName;
+        String description;
+    }
+
+    @SuppressWarnings("unchecked")
+    final List<PlayMode> getPlayModes() {
+        if (playModes == null) {
+            playModes = new ArrayList<>();
+            Yaml yaml = new Yaml();
+            Map<String, Object> gamesMap;
+            try {
+                gamesMap = (Map<String, Object>)yaml.load(new FileReader("config/modes.yml"));
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+                return playModes;
+            }
+            for (String gameKey: gamesMap.keySet()) {
+                Map<String, Object> modesMap = (Map<String, Object>)gamesMap.get(gameKey);
+                for (String modeKey: modesMap.keySet()) {
+                    Map<String, Object> modeMap = (Map<String, Object>)modesMap.get(modeKey);
+                    PlayMode playMode = new PlayMode();
+                    playMode.gameName = gameKey;
+                    playMode.modeId = (String)modeMap.get("ModeID");
+                    playMode.displayName = (String)modeMap.get("DisplayName");
+                    playMode.description = (String)modeMap.get("Description");
+                    playModes.add(playMode);
+                }
+            }
+        }
+        return playModes;
+    }
+
+    final List<PlayMode> findPlayModes(String gameName) {
+        return getPlayModes().stream().filter(a -> a.gameName.equals(gameName)).collect(Collectors.toList());
+    }
+
+    final PlayMode findPlayMode(String gameName, String modeName) {
+        for (PlayMode a: getPlayModes()) {
+            if (a.gameName.equals(gameName) && a.modeId.equals(modeName)) return a;
+        }
+        return null;
+    }
+
     // Synchronous Event Responders
 
     void syncGameCommand(OnlinePlayer sender, String serverName, String[] args) {
@@ -788,6 +845,26 @@ public final class Daemon implements ConnectHandler {
                     WorldInfo worldInfo = findWorldInfo(game.name, mapArg);
                     if (worldInfo == null) return;
                     game.mapId = mapArg;
+                    dirtyGames = true;
+                    sendGameInfo(sender.getUuid(), serverName, game);
+                }
+            }
+            break;
+        case "mode":
+            if (args.length >= 1) {
+                if (user.currentGame == null) return;
+                Game game = openGames.get(user.currentGame);
+                if (game == null || !sender.getUuid().equals(game.owner)) return;
+                if (game.serverId >= 0) return;
+                if (args.length == 1) {
+                    sendGameInfo(sender.getUuid(), serverName, game, GameInfoMode.PLAY_MODE);
+                } else {
+                    StringBuilder sb = new StringBuilder(args[1]);
+                    for (int i = 2; i < args.length; i += 1) sb.append(" ").append(args[i]);
+                    String modeArg = sb.toString();
+                    PlayMode playMode = findPlayMode(game.name, modeArg);
+                    if (playMode == null) return;
+                    game.playMode = modeArg;
                     dirtyGames = true;
                     sendGameInfo(sender.getUuid(), serverName, game);
                 }
@@ -1038,7 +1115,7 @@ public final class Daemon implements ConnectHandler {
     }
 
     enum GameInfoMode {
-        NONE, MAP, INVITE, OVERVIEW;
+        NONE, MAP, INVITE, OVERVIEW, PLAY_MODE;
     }
 
     void sendGameInfo(UUID target, String serverName, Game game) {
@@ -1167,6 +1244,38 @@ public final class Daemon implements ConnectHandler {
                 }
                 sendRawMessage(target, serverName, mapsJs);
             }
+            // Play Modes
+            if (select == GameInfoMode.PLAY_MODE) {
+                List<Object> modeJs = new ArrayList<>();
+                modeJs.add("");
+                modeJs.add(button(ChatColor.BLUE, "> &fSelect gameplay mode", null, null));
+                int i = 0;
+                for (PlayMode playMode: findPlayModes(game.name)) {
+                    i += 1;
+                    modeJs.add("  ");
+                    modeJs.add(button(niceColors.get(i % niceColors.size()),
+                                      "[" + playMode.displayName + "]",
+                                      "/game mode " + playMode.modeId,
+                                      playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
+                }
+                sendRawMessage(target, serverName, modeJs);
+            } else {
+                if (!findPlayModes(game.name).isEmpty());
+                List<Object> modeJs = new ArrayList<>();
+                modeJs.add("");
+                modeJs.add(button(ChatColor.BLUE, "> &fMode ", null, null));
+                if (game.playMode == null) {
+                    modeJs.add(button(ChatColor.GRAY, "Random", null, "A random mode will be picked"));
+                } else {
+                    PlayMode playMode = findPlayMode(game.name, game.playMode);
+                    modeJs.add(button(ChatColor.GRAY, playMode.displayName, null, playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
+                }
+                if (canModify) {
+                    modeJs.add("  ");
+                    modeJs.add(button(ChatColor.GOLD, "[Switch]", "/game mode", "Select a play mode"));
+                }
+                sendRawMessage(target, serverName, modeJs);
+            }
         }
         sendMessage(target, serverName, ChatColor.BLUE, ">");
         if (isSetup) {
@@ -1178,17 +1287,25 @@ public final class Daemon implements ConnectHandler {
                                                                      format("&9> &fReady?  "),
                                                                      button(ChatColor.GREEN, "[Go!]", "/game start", "Start the game"),
                                                                      "  ",
-                                                                     button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game")));
+                                                                     button(ChatColor.RED, "[Cancel]", "/game quit", "Cancel this game"),
+                                                                     "  ",
+                                                                     button(ChatColor.YELLOW, "[Refresh]", "/game", "Refresh game info")));
                 } else {
                     sendRawMessage(target, serverName, Arrays.asList("",
                                                                      format("&9> &fGame running. "),
-                                                                     button(ChatColor.RED, "[Quit]", "/game quit", "Quit this game")));
+                                                                     button(ChatColor.RED, "[Quit]", "/game quit", "Quit this game"),
+                                                                     "  ",
+                                                                     button(ChatColor.YELLOW, "[Refresh]", "/game", "Refresh game info")));
+
                 }
             } else if (isMember) {
                 // Member stuff
                 sendRawMessage(target, serverName, Arrays.asList("",
                                                                  format("&9> &fChanged your mind?  "),
-                                                                 button(ChatColor.RED, "[Quit]", "/game quit", "Leave this game")));
+                                                                 button(ChatColor.RED, "[Quit]", "/game quit", "Leave this game"),
+                                                                 "  ",
+                                                                 button(ChatColor.YELLOW, "[Refresh]", "/game", "Refresh game info")));
+
             } else {
                 // Outsider stuff
                 List<Object> joinJs = new ArrayList<>();
@@ -1205,6 +1322,8 @@ public final class Daemon implements ConnectHandler {
                     joinJs.add("  ");
                     joinJs.add(button(ChatColor.AQUA, "[Spec]", "/game " + game.uniqueId + " spec", "Spectate this game"));
                 }
+                joinJs.add("  ");
+                joinJs.add(button(ChatColor.YELLOW, "[Refresh]", "/game", "Refresh game info"));
                 sendRawMessage(target, serverName, joinJs);
             }
         } else {
@@ -1306,6 +1425,10 @@ public final class Daemon implements ConnectHandler {
             List<WorldInfo> infos = findGameWorlds(game.name);
             worldInfo = infos.get(random.nextInt(infos.size()));
             game.mapId = worldInfo.mapId;
+        }
+        List<PlayMode> gamePlayModes = findPlayModes(game.name);
+        if (!gamePlayModes.isEmpty() && game.playMode == null) {
+            game.playMode = gamePlayModes.get(random.nextInt(gamePlayModes.size())).modeId;
         }
         final ProcessBuilder pb = new ProcessBuilder("script/" + game.setupScript, game.name, "" + server.index, worldInfo.mapPath);
         pb.inheritIO();
@@ -1551,6 +1674,7 @@ public final class Daemon implements ConnectHandler {
                 System.out.println("Flushing all cached config files...");
                 playerCache = null;
                 worldInfos = null;
+                playModes = null;
                 return;
             }
             break;
@@ -1578,6 +1702,7 @@ public final class Daemon implements ConnectHandler {
                 dirtyGames = true;
                 playerCache = null;
                 worldInfos = null;
+                playModes = null;
                 return;
             }
             break;
