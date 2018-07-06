@@ -1797,6 +1797,8 @@ public final class Daemon implements ConnectHandler {
     }
 
     String getUserName(UUID uuid) {
+        User user = users.get(uuid);
+        if (user != null && user.name != null) return user.name;
         String result = getPlayerCache().get(uuid);
         if (result != null) return result;
         return "N/A";
