@@ -16,6 +16,10 @@
       <id>spigot-repo</id>
       <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
     </repository>
+    <repository>
+      <id>cavetale-repo</id>
+      <url>https://cavetale.com/jenkins/plugin/repository/everything/</url>
+    </repository>
   </repositories>
   <dependencies>
     <!-- JUnit -->

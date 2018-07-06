@@ -609,9 +609,7 @@ public final class Daemon implements ConnectHandler {
             try {
                 Map<String, Object> map = (Map<String, Object>)yaml.load(new FileReader("config/worlds.yml"));
                 for (String gameKey: map.keySet()) {
-                    Map<String, Object> gameSection = (Map<String, Object>)map.get(gameKey);
-                    Map<String, Object> mapSection = (Map<String, Object>)gameSection.get("maps");
-                    if (mapSection == null) continue;
+                    Map<String, Object> mapSection = (Map<String, Object>)map.get(gameKey);
                     for (String mapKey: mapSection.keySet()) {
                         Map<String, Object> worldSection = (Map<String, Object>)mapSection.get(mapKey);
                         WorldInfo wi = new WorldInfo();
@@ -809,7 +807,9 @@ public final class Daemon implements ConnectHandler {
                     if (sender.getUuid().equals(game.owner)) {
                         for (UUID member: game.members) {
                             users.remove(member);
-                            sendMessage(member, null, ChatColor.RED, "%s cancelled the game.", sender.getName());
+                            sendRawMessage(member, null,
+                                           button(ChatColor.RED, sender.getName() + " cancelled the game. ", null, null),
+                                           button(ChatColor.YELLOW, "[Menu]", "/game", "Back to menu"));
                         }
                         openGames.remove(game.uniqueId);
                         dirtyGames = true;
@@ -1054,12 +1054,31 @@ public final class Daemon implements ConnectHandler {
         } else {
             sendMessage(target, serverName, ChatColor.GREEN, "&9> &a&l%s Game Info", game.displayName);
         }
-        sendMessage(target, serverName, ChatColor.GRAY, "&9> &7%s", game.description);
+        // Description
+        StringBuilder desc = new StringBuilder();
+        int descLen = 0;
+        for (String word: game.description.split(" ")) {
+            if (descLen == 0) {
+                desc.append(word);
+                descLen = word.length();
+            } else if (descLen + 1 + word.length() < 32) {
+                desc.append(" ").append(word);
+                descLen += 1 + word.length();
+            } else {
+                desc.append("\n").append(word);
+                descLen = word.length();
+            }
+        }
+        for (String line: desc.toString().split("\n")) {
+            sendMessage(target, serverName, ChatColor.GRAY, "&9> &7%s", line);
+        }
+        // Permissions
         boolean canModify = isSetup && target.equals(game.owner);
         boolean isMember = isSetup && game.members.contains(target);
         boolean isInvited = isSetup && (game.publicGame || game.invitees.contains(target));
-        sendMessage(target, serverName, ChatColor.BLUE, ">");
         if (isSetup) {
+            // Player List
+            sendMessage(target, serverName, ChatColor.BLUE, ">");
             List<Object> playersJs = new ArrayList<>();
             playersJs.add(format("&9> &fPlayers  "));
             boolean comma = false;
@@ -1150,8 +1169,8 @@ public final class Daemon implements ConnectHandler {
             }
         }
         sendMessage(target, serverName, ChatColor.BLUE, ">");
-        // Action buttons. Go, Cancel, Join, Quit, Spectate
         if (isSetup) {
+            // Action buttons. Go, Cancel, Join, Quit, Spectate
             if (canModify) {
                 // Owner stuff
                 if (game.serverId < 0) {
@@ -1199,9 +1218,17 @@ public final class Daemon implements ConnectHandler {
 
     // Messaging
 
-    void sendRawMessage(UUID target, String server, Object message) {
+    void sendRawMessage(UUID target, String server, Object... obj) {
         Map<String, Object> js = new HashMap<>();
         js.put("target", target.toString());
+        Object message;
+        if (obj.length == 0) {
+            return;
+        } else if (obj.length == 1) {
+            message = obj[0];
+        } else {
+            message = Arrays.asList(obj);
+        }
         js.put("chat", message);
         if (server == null) {
             connect.broadcast("PLAYER_MESSAGE", js);
