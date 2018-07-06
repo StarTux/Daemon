@@ -1245,36 +1245,37 @@ public final class Daemon implements ConnectHandler {
                 sendRawMessage(target, serverName, mapsJs);
             }
             // Play Modes
-            if (select == GameInfoMode.PLAY_MODE) {
-                List<Object> modeJs = new ArrayList<>();
-                modeJs.add("");
-                modeJs.add(button(ChatColor.BLUE, "> &fSelect gameplay mode", null, null));
-                int i = 0;
-                for (PlayMode playMode: findPlayModes(game.name)) {
-                    i += 1;
-                    modeJs.add("  ");
-                    modeJs.add(button(niceColors.get(i % niceColors.size()),
-                                      "[" + playMode.displayName + "]",
-                                      "/game mode " + playMode.modeId,
-                                      playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
-                }
-                sendRawMessage(target, serverName, modeJs);
-            } else {
-                if (!findPlayModes(game.name).isEmpty());
-                List<Object> modeJs = new ArrayList<>();
-                modeJs.add("");
-                modeJs.add(button(ChatColor.BLUE, "> &fMode ", null, null));
-                if (game.playMode == null) {
-                    modeJs.add(button(ChatColor.GRAY, "Random", null, "A random mode will be picked"));
+            if (!findPlayModes(game.name).isEmpty()) {
+                if (select == GameInfoMode.PLAY_MODE) {
+                    List<Object> modeJs = new ArrayList<>();
+                    modeJs.add("");
+                    modeJs.add(button(ChatColor.BLUE, "> &fSelect gameplay mode", null, null));
+                    int i = 0;
+                    for (PlayMode playMode: findPlayModes(game.name)) {
+                        i += 1;
+                        modeJs.add("  ");
+                        modeJs.add(button(niceColors.get(i % niceColors.size()),
+                                          "[" + playMode.displayName + "]",
+                                          "/game mode " + playMode.modeId,
+                                          playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
+                    }
+                    sendRawMessage(target, serverName, modeJs);
                 } else {
-                    PlayMode playMode = findPlayMode(game.name, game.playMode);
-                    modeJs.add(button(ChatColor.GRAY, playMode.displayName, null, playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
+                    List<Object> modeJs = new ArrayList<>();
+                    modeJs.add("");
+                    modeJs.add(button(ChatColor.BLUE, "> &fMode ", null, null));
+                    if (game.playMode == null) {
+                        modeJs.add(button(ChatColor.GRAY, "Random", null, "A random mode will be picked"));
+                    } else {
+                        PlayMode playMode = findPlayMode(game.name, game.playMode);
+                        modeJs.add(button(ChatColor.GRAY, playMode.displayName, null, playMode.displayName + "\n" + ChatColor.GRAY + playMode.description));
+                    }
+                    if (canModify) {
+                        modeJs.add("  ");
+                        modeJs.add(button(ChatColor.GOLD, "[Switch]", "/game mode", "Select a play mode"));
+                    }
+                    sendRawMessage(target, serverName, modeJs);
                 }
-                if (canModify) {
-                    modeJs.add("  ");
-                    modeJs.add(button(ChatColor.GOLD, "[Switch]", "/game mode", "Select a play mode"));
-                }
-                sendRawMessage(target, serverName, modeJs);
             }
         }
         sendMessage(target, serverName, ChatColor.BLUE, ">");
