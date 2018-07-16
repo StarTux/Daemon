@@ -572,6 +572,7 @@ public final class Daemon implements ConnectHandler {
         String displayName;
         List<String> authors;
         String description;
+        boolean soloOnly;
 
         Object worldInfoButton(ChatColor color, boolean withCommand) {
             StringBuilder credits = new StringBuilder();
@@ -628,6 +629,7 @@ public final class Daemon implements ConnectHandler {
                         wi.authors = (List<String>)worldSection.get("Authors");
                         wi.displayName = (String)worldSection.get("DisplayName");
                         wi.description = (String)worldSection.get("Description");
+                        wi.soloOnly = worldSection.get("SoloOnly") == Boolean.TRUE;
                         if (wi.mapId == null) continue;
                         if (wi.mapPath == null) continue;
                         if (wi.authors == null) wi.authors = new ArrayList<>();
