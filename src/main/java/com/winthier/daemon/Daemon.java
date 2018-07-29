@@ -1,6 +1,5 @@
 package com.winthier.daemon;
 
-import com.winthier.connect.AbstractConnectHandler;
 import com.winthier.connect.Client;
 import com.winthier.connect.Connect;
 import com.winthier.connect.ConnectHandler;
@@ -13,6 +12,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -28,9 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.bukkit.ChatColor;
 import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
@@ -109,6 +111,55 @@ public final class Daemon implements ConnectHandler {
             shouldStop = true;
             System.out.println("Reader thread terminating");
         }).start();
+        new Thread(() -> {
+                while (!shouldStop) {
+                    final ServerSocket serverSocket;
+                    try {
+                        serverSocket = new ServerSocket(8989, 0, InetAddress.getByName(null));
+                        serverSocket.setReuseAddress(true);
+                        serverSocket.setSoTimeout(1000 * 10);
+                    } catch (IOException ioe) {
+                        ioe.printStackTrace();
+                        continue;
+                    }
+                    System.out.println("Listening on port " + serverSocket.getLocalPort());
+                    while (!shouldStop) {
+                        final PrintStream out;
+                        try {
+                            Socket socket = serverSocket.accept();
+                            out = new PrintStream(socket.getOutputStream());
+                        } catch (SocketTimeoutException ste) {
+                            continue;
+                        } catch (IOException ioe) {
+                            ioe.printStackTrace();
+                            continue;
+                        }
+                        tasks.add(() -> {
+                                try {
+                                    Map<String, List<String>> serverList = new HashMap<>();
+                                    int totalCount = 0;
+                                    for (ServerConnection con: new ArrayList<>(connect.getServer().getConnections())) {
+                                        List<OnlinePlayer> conList = new ArrayList<>(con.getOnlinePlayers());
+                                        if (conList.isEmpty()) continue;
+                                        String displayName = con.getName();
+                                        Client client = Connect.getInstance().getClient(displayName);
+                                        if (client != null) displayName = client.getDisplayName();
+                                        List<String> playerList = serverList.get(displayName);
+                                        if (playerList == null) {
+                                            playerList = new ArrayList<>();
+                                            serverList.put(displayName, playerList);
+                                        }
+                                        playerList.addAll(conList.stream().map(p -> p.getName()).collect(Collectors.toList()));
+                                        totalCount += conList.size();
+                                    }
+                                    out.println(JSONValue.toJSONString(serverList));
+                                } finally {
+                                    out.close();
+                                }
+                            });
+                    } // accept loop
+                } // server loop
+        }).start();
         // Sync Tasks
         while (!shouldStop) {
             try {
@@ -166,6 +217,9 @@ public final class Daemon implements ConnectHandler {
         try {
             task = tasks.poll(1, TimeUnit.SECONDS);
         } catch (InterruptedException ie) {
+            return;
+        } catch (Throwable t) {
+            t.printStackTrace();
             return;
         }
         if (task != null) task.run();
@@ -255,9 +309,9 @@ public final class Daemon implements ConnectHandler {
         users.clear();
         File file = new File("save/users.save");
         if (!file.isFile()) return;
-        List<Map<String, Object> > list;
+        List<Map<String, Object>> list;
         try {
-            list = (List<Map<String, Object> >)JSONValue.parseWithException(new FileReader(file));
+            list = (List<Map<String, Object>>)JSONValue.parseWithException(new FileReader(file));
         } catch (IOException ioe) {
             ioe.printStackTrace();
             return;
@@ -359,9 +413,9 @@ public final class Daemon implements ConnectHandler {
     void loadServers() {
         File file = new File("save/servers.save");
         if (!file.isFile()) return;
-        List<Map<String, Object> > list;
+        List<Map<String, Object>> list;
         try {
-            list = (List<Map<String, Object> >)JSONValue.parseWithException(new FileReader(file));
+            list = (List<Map<String, Object>>)JSONValue.parseWithException(new FileReader(file));
         } catch (IOException ioe) {
             ioe.printStackTrace();
             return;
@@ -528,9 +582,9 @@ public final class Daemon implements ConnectHandler {
         openGames.clear();
         File file = new File("save/games.save");
         if (!file.isFile()) return;
-        List<Map<String, Object> > list;
+        List<Map<String, Object>> list;
         try {
-            list = (List<Map<String, Object> >)JSONValue.parseWithException(new FileReader(file));
+            list = (List<Map<String, Object>>)JSONValue.parseWithException(new FileReader(file));
         } catch (IOException ioe) {
             ioe.printStackTrace();
             return;
@@ -547,7 +601,7 @@ public final class Daemon implements ConnectHandler {
     }
 
     void saveOpenGames() {
-        List<Map<String, Object> > list = new ArrayList<>();
+        List<Map<String, Object>> list = new ArrayList<>();
         for (Game game: openGames.values()) {
             Map<String, Object> map = new HashMap<>();
             game.store(map);
@@ -671,7 +725,7 @@ public final class Daemon implements ConnectHandler {
     }
 
     @SuppressWarnings("unchecked")
-    final List<PlayMode> getPlayModes() {
+    List<PlayMode> getPlayModes() {
         if (playModes == null) {
             playModes = new ArrayList<>();
             Yaml yaml = new Yaml();
@@ -698,11 +752,11 @@ public final class Daemon implements ConnectHandler {
         return playModes;
     }
 
-    final List<PlayMode> findPlayModes(String gameName) {
+    List<PlayMode> findPlayModes(String gameName) {
         return getPlayModes().stream().filter(a -> a.gameName.equals(gameName)).collect(Collectors.toList());
     }
 
-    final PlayMode findPlayMode(String gameName, String modeName) {
+    PlayMode findPlayMode(String gameName, String modeName) {
         for (PlayMode a: getPlayModes()) {
             if (a.gameName.equals(gameName) && a.modeId.equals(modeName)) return a;
         }
@@ -1236,7 +1290,7 @@ public final class Daemon implements ConnectHandler {
                 List<Object> mapsJs = new ArrayList<>();
                 mapsJs.add("");
                 mapsJs.add(format("&9> &fSelect a map:"));
-                ChatColor[] colors = { ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA };
+                ChatColor[] colors = {ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA};
                 int i = 0;
                 for (WorldInfo worldInfo: findGameWorlds(game.name)) {
                     i += 1;
