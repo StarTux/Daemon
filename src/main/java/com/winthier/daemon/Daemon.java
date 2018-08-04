@@ -940,7 +940,7 @@ public final class Daemon implements ConnectHandler {
                     if (sender.getUuid().equals(game.owner)) {
                         for (UUID member: game.members) {
                             users.remove(member);
-                            sendRawMessage(member, null,
+                            sendRawMessage(member,
                                            button(ChatColor.RED, sender.getName() + " cancelled the game. ", null, null),
                                            button(ChatColor.YELLOW, "[Menu]", "/game", "Back to menu"));
                         }
@@ -1535,7 +1535,7 @@ public final class Daemon implements ConnectHandler {
         final Game game = openGames.get(gameId);
         if (retval != 0) {
             for (UUID member: game.members) {
-                sendMessage(member, null, ChatColor.RED, "Your game could not be created. Please contact an administrator, or try again later.");
+                sendMessage(member, ChatColor.RED, "Your game could not be created. Please contact an administrator, or try again later.");
                 users.remove(member);
             }
             server.reset();
@@ -1589,12 +1589,12 @@ public final class Daemon implements ConnectHandler {
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
                 if (user.currentGame != null) {
-                    sendMessage(playerId, null, ChatColor.RED, "You are already in a game.");
+                    sendMessage(playerId, ChatColor.RED, "You are already in a game.");
                     return;
                 }
                 Game game = openGames.get(gameId);
                 if (game == null) {
-                    sendMessage(playerId, null, ChatColor.RED, "Game not found.");
+                    sendMessage(playerId, ChatColor.RED, "Game not found.");
                     return;
                 }
                 user.currentGame = gameId;
@@ -1612,12 +1612,12 @@ public final class Daemon implements ConnectHandler {
                 UUID gameId = UUID.fromString((String)map.get("game"));
                 User user = getUser(playerId);
                 if (user.currentGame != null) {
-                    sendMessage(playerId, null, ChatColor.RED, "You are already in a game.");
+                    sendMessage(playerId, ChatColor.RED, "You are already in a game.");
                     return;
                 }
                 Game game = openGames.get(gameId);
                 if (game == null) {
-                    sendMessage(playerId, null, ChatColor.RED, "Game not found.");
+                    sendMessage(playerId, ChatColor.RED, "Game not found.");
                     return;
                 }
                 user.currentGame = gameId;
