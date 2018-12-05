@@ -1649,7 +1649,7 @@ public final class Daemon implements ConnectHandler {
             if (args.length == 0) {
                 System.out.println("Server Player List");
                 for (Map.Entry<String, List<OnlinePlayer>> entry: connect.listPlayers().entrySet()) {
-                    System.out.println("= " + entry.getKey() + " (" + entry.getValue().size());
+                    System.out.println("= " + entry.getKey() + " (" + entry.getValue().size() + ")");
                     for (OnlinePlayer player: entry.getValue()) {
                         System.out.println("  - " + player.getName());
                     }
