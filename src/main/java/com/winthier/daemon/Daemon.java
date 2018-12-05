@@ -1,11 +1,9 @@
 package com.winthier.daemon;
 
-import com.winthier.connect.Client;
 import com.winthier.connect.Connect;
 import com.winthier.connect.ConnectHandler;
 import com.winthier.connect.Message;
 import com.winthier.connect.OnlinePlayer;
-import com.winthier.connect.ServerConnection;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -72,8 +70,8 @@ public final class Daemon implements ConnectHandler {
         loadGames();
         loadOpenGames();
         //
-        connect = new Connect("daemon", new File("servers.txt"), this);
-        connect.start();
+        this.connect = new Connect("daemon", this);
+        new Thread(this.connect).start();
         List<Runnable> currentTasks = new ArrayList<>();
         //
         new Thread(() -> {
@@ -137,20 +135,8 @@ public final class Daemon implements ConnectHandler {
                         tasks.add(() -> {
                                 try {
                                     Map<String, List<String>> serverList = new HashMap<>();
-                                    int totalCount = 0;
-                                    for (ServerConnection con: new ArrayList<>(connect.getServer().getConnections())) {
-                                        List<OnlinePlayer> conList = new ArrayList<>(con.getOnlinePlayers());
-                                        if (conList.isEmpty()) continue;
-                                        String displayName = con.getName();
-                                        Client client = Connect.getInstance().getClient(displayName);
-                                        if (client != null) displayName = client.getDisplayName();
-                                        List<String> playerList = serverList.get(displayName);
-                                        if (playerList == null) {
-                                            playerList = new ArrayList<>();
-                                            serverList.put(displayName, playerList);
-                                        }
-                                        playerList.addAll(conList.stream().map(p -> p.getName()).collect(Collectors.toList()));
-                                        totalCount += conList.size();
+                                    for (Map.Entry<String, List<OnlinePlayer>> entry: connect.listPlayers().entrySet()) {
+                                        serverList.put(entry.getKey(), entry.getValue().stream().map(OnlinePlayer::getName).collect(Collectors.toList()));
                                     }
                                     out.println(JSONValue.toJSONString(serverList));
                                 } finally {
@@ -227,20 +213,15 @@ public final class Daemon implements ConnectHandler {
 
     // Connect Overrides
 
-    @Override
-    public void runThread(Runnable runnable) {
-        new Thread(runnable).start();
-    }
-
     @Override // ASYNC
-    public void handleClientConnect(Client client) {
-        tasks.add(() -> syncHandleClientConnect(client));
+    public void handleRemoteConnect(String remote) {
+        tasks.add(() -> syncHandleRemoteConnect(remote));
     }
 
-    void syncHandleClientConnect(Client client) {
+    void syncHandleRemoteConnect(String remote) {
         Server server = null;
         for (Server serveri: servers) {
-            if (client.getName().equals("game" + serveri.index)) {
+            if (remote.equals("game" + serveri.index)) {
                 server = serveri;
                 break;
             }
@@ -255,13 +236,7 @@ public final class Daemon implements ConnectHandler {
     }
 
     @Override // ASYNC
-    public void handleClientDisconnect(Client client) { }
-
-    @Override // ASYNC
-    public void handleServerConnect(ServerConnection connection) { }
-
-    @Override // ASYNC
-    public void handleServerDisconnect(ServerConnection connection) { }
+    public void handleRemoteDisconnect(String remote) { }
 
     @Override // ASYNC
     public void handleMessage(Message message) {
@@ -871,7 +846,7 @@ public final class Daemon implements ConnectHandler {
                         chat.add(" ");
                         chat.add(button(ChatColor.YELLOW, "[Info]", "/game " + game.uniqueId + " info", "Read more"));
                         payload.put("chat", chat);
-                        connect.broadcast("PLAYER_MESSAGE", payload);
+                        connect.broadcast("LAYER_MESSAGE", payload);
                     }
                 }
             }
@@ -1673,9 +1648,9 @@ public final class Daemon implements ConnectHandler {
         case "list":
             if (args.length == 0) {
                 System.out.println("Server Player List");
-                for (ServerConnection server: connect.getServer().getConnections()) {
-                    System.out.println("= " + server.getName() + " (" + server.getOnlinePlayers().size() + ") " + server.getStatus());
-                    for (OnlinePlayer player: server.getOnlinePlayers()) {
+                for (Map.Entry<String, List<OnlinePlayer>> entry: connect.listPlayers().entrySet()) {
+                    System.out.println("= " + entry.getKey() + " (" + entry.getValue().size());
+                    for (OnlinePlayer player: entry.getValue()) {
                         System.out.println("  - " + player.getName());
                     }
                 }
