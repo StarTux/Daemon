@@ -251,9 +251,6 @@ public final class Daemon implements ConnectHandler {
     public void handleRemoteCommand(OnlinePlayer sender, String server, String[] args) {
         if (args.length == 0) return;
         switch (args[0].toLowerCase()) {
-        case "game": case "games":
-            tasks.add(() -> syncGameCommand(sender, Arrays.copyOfRange(args, 1, args.length)));
-            break;
         default: break;
         }
     }
